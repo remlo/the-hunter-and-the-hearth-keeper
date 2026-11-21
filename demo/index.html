@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Play the first demo of The hunter and the hearth keeper in your browser. Two players share one keyboard.">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<title>The hunter and the hearth keeper</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Zen+Maru+Gothic:wght@400;500;700&display=swap">
+<style>
+  /* Layout: one full-bleed stage. Quiet control chips sit in the lower corners, one per player.
+     A title card lies over the live scene until the first click. One look only: the game's own dusk palette. */
+  :root {
+    color-scheme: dark;
+    --void: #0b1118;
+    --ink: #f4e6c8;
+    --ink-soft: #d6c5a4;
+    --panel: rgba(24, 17, 14, 0.68);
+    --panel-line: rgba(244, 230, 200, 0.16);
+    --ember: #ffb44a;
+    --ember-deep: #e2702a;
+    --keeper: #8fa94a;
+    --hunter: #7d9bc6;
+    --key: #f4e6c8;
+    --key-ink: #3a2a22;
+    --ash: #8d909a;
+    /* The same pair as the landing page: a storybook serif for the title, a soft rounded sans for everything else. */
+    --display: "Young Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Nunito", "Segoe UI", system-ui, sans-serif;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--void); color: var(--ink); font-family: var(--body); overflow: hidden; }
+  #game { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--void); -webkit-user-select: none; user-select: none; touch-action: none; }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+
+  .gutter { box-sizing: border-box; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  /* ---- control chips ---- */
+  #hud { position: absolute; inset: 0; pointer-events: none; display: flex; flex-wrap: wrap; align-items: flex-end; align-content: flex-end; justify-content: space-between; gap: 10px; padding-block: 16px; opacity: 0; transition: opacity 0.7s ease 0.35s; }
+  #hud > .chip { max-width: 100%; }
+  #hud > .chip:last-child { margin-left: auto; }   /* when the two no longer fit side by side, the Hunter's chip drops to its own row, still on the right */
+  #game.is-playing #hud { opacity: 1; }
+  .chip { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--panel-line); font-size: 13px; line-height: 1.2; color: var(--ink-soft); }
+  .who { display: flex; align-items: center; gap: 7px; font-family: var(--body); font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .dot.keeper { background: var(--keeper); }
+  .dot.hunter { background: var(--hunter); }
+  .hint { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .keys { display: inline-flex; gap: 3px; }
+  kbd { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-width: 21px; height: 21px; padding: 0 5px; border-radius: 5px; background: var(--key); color: var(--key-ink); font: 700 11px/1 var(--body); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.38); }
+  #keeper-act kbd { transition: background 0.2s ease, box-shadow 0.2s ease; }
+  #keeper-act.is-ready kbd { background: var(--ember); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.38), 0 0 12px rgba(255, 180, 74, 0.7); }
+  #keeper-act.is-empty kbd { background: var(--ash); }
+
+  /* ---- lantern indicator: fill is the fuel, the ring is the flare running out ---- */
+  .lantern { --fuel: 1; --flare: 0; position: relative; flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); background: conic-gradient(var(--ember) calc(var(--flare) * 360deg), rgba(244, 230, 200, 0.16) 0); }
+  .lantern::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #1b1310; }
+  .lantern svg { position: relative; display: block; overflow: visible; }
+  .lantern .fuel { fill: var(--ember); transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(var(--fuel)); }
+  .lantern.is-flare { box-shadow: 0 0 16px rgba(255, 180, 74, 0.55); }
+  .lantern.is-flare .fuel { fill: #ffd27a; }
+  .lantern.is-low .fuel { fill: var(--ember-deep); animation: gutter 0.42s steps(2, end) infinite; }
+  .lantern.is-out { color: var(--ash); }
+  .lantern.is-pulse { animation: pulse 0.9s ease-out; }
+  @keyframes gutter { 50% { opacity: 0.35; } }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 180, 74, 0.9); } 100% { box-shadow: 0 0 0 18px rgba(255, 180, 74, 0); } }
+
+  /* ---- title card ---- */
+  #start { position: absolute; inset: 0; display: flex; align-items: flex-end; padding-block: clamp(20px, 5vh, 44px); cursor: pointer; background: linear-gradient(to top, rgba(9, 8, 10, 0.9) 0%, rgba(9, 8, 10, 0.62) 30%, rgba(9, 8, 10, 0) 60%); transition: opacity 0.6s ease, visibility 0s linear 0.6s; }
+  #game.is-playing #start { opacity: 0; visibility: hidden; pointer-events: none; }
+  .card { display: flex; flex-direction: column; gap: 14px; max-width: 760px; min-width: 0; }
+  .eyebrow { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ember); }
+  h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5.4vw, 58px); line-height: 1.06; text-wrap: balance; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+  h1 em { font-style: normal; color: var(--ember); }
+  .lede { margin: 0; max-width: 52ch; font-size: clamp(14px, 1.6vw, 17px); line-height: 1.45; color: var(--ink-soft); }
+  .roles { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--ink-soft); }
+  .role { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+  .role b { font-family: var(--body); font-weight: 700; color: var(--ink); }
+  #play { align-self: flex-start; margin-top: 4px; padding: 13px 22px; border: 0; border-radius: 12px; background: var(--ember); color: #2c1b10; font: 700 16px/1 var(--body); cursor: pointer; box-shadow: 0 4px 0 #a9541d, 0 10px 26px rgba(255, 150, 50, 0.3); transition: transform 0.12s ease, box-shadow 0.12s ease; }
+  #play:hover { transform: translateY(-1px); }
+  #play:active { transform: translateY(3px); box-shadow: 0 1px 0 #a9541d; }
+  #play:focus-visible, #resume:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  #resume { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); padding: 9px 16px; border-radius: 999px; border: 1px solid var(--panel-line); background: var(--panel); color: var(--ink); font: 500 13px/1 var(--body); cursor: pointer; }
+  #game:not(.is-playing) #resume { display: none; }
+
+  /* ---- loading card: the logo over the dark and a short load. Then the logo lifts away and the clearing shows. ---- */
+  #splash { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(18px, 4vh, 36px); background-color: var(--void); transition: background-color 0.9s ease 0.1s, visibility 0s linear 1.2s; }
+  #splash[hidden] { display: none; }
+  #splash-logo { width: min(76%, 30rem); height: auto; opacity: 0; transform: translateY(10px) scale(0.97); transition: opacity 0.5s ease, transform 0.5s ease; filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.45)); }
+  #splash.is-in #splash-logo { opacity: 1; transform: none; }
+  .loadline { display: flex; flex-direction: column; align-items: center; gap: 12px; opacity: 0; transition: opacity 0.3s ease; }
+  #splash.is-in .loadline { opacity: 1; }
+  .loadbar { width: min(60%, 240px); min-width: 160px; height: 6px; border-radius: 999px; background: var(--panel-line); overflow: hidden; }
+  .loadbar i { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--ember); transform-origin: 0 50%; transform: scaleX(0); }
+  #splash.is-loading .loadbar i { animation: load var(--load-ms, 2000ms) linear forwards; }
+  .loadtxt { margin: 0; font-size: 13px; font-weight: 500; color: var(--ink-soft); }
+  #splash.is-leaving { background-color: transparent; visibility: hidden; pointer-events: none; }
+  #splash.is-leaving .loadline { opacity: 0; }
+  #splash.is-leaving #splash-logo { animation: lift 0.85s cubic-bezier(0.5, 0, 0.8, 0.2) forwards; }
+  /* An uneven fill reads as real work: quick start, two short stalls, a fast finish. */
+  @keyframes load { 0% { transform: scaleX(0); } 20% { transform: scaleX(0.3); } 38% { transform: scaleX(0.35); } 66% { transform: scaleX(0.76); } 80% { transform: scaleX(0.82); } 100% { transform: scaleX(1); } }
+  /* A small dip first, then up and out through the top. --lift is measured by the script. */
+  @keyframes lift { 0% { transform: translateY(0); } 18% { transform: translateY(14px); } 100% { transform: translateY(var(--lift, -120%)); } }
+
+  #fail { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--ink-soft); font-size: 15px; line-height: 1.5; }
+
+  @media (max-width: 1180px) { .chip .txt { display: none; } }
+  @media (max-width: 520px) {
+    .chip { gap: 8px; padding: 7px 9px; }
+    .chip .name { display: none; }
+    kbd { min-width: 19px; height: 19px; padding: 0 4px; }
+    .lantern { width: 32px; height: 32px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lantern.is-low .fuel, .lantern.is-pulse { animation: none; }
+    #hud, #start, #play { transition: none; }
+    #splash, #splash-logo, .loadline { transition: none; }
+    #splash.is-loading .loadbar i { animation: none; transform: none; }
+    #splash.is-leaving #splash-logo { animation: none; opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="view" tabindex="0" aria-label="The clearing, the cottage and the forest edge"></canvas>
+
+  <div id="hud" class="gutter">
+    <div class="chip">
+      <span class="who"><span class="dot keeper"></span><span class="name">Hearth keeper</span></span>
+      <span class="hint"><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span class="txt">move</span></span>
+      <span class="hint" id="keeper-act"><kbd>E</kbd><span class="txt" id="keeper-act-txt">stoke the fire</span></span>
+    </div>
+    <div class="chip">
+      <div class="lantern" id="lantern" role="img" aria-label="Lantern: burning">
+        <svg viewBox="0 0 20 24" width="16" height="19" aria-hidden="true">
+          <path d="M7 4a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <rect x="4" y="4.6" width="12" height="3" rx="1.2" fill="currentColor"/>
+          <rect class="fuel" x="6" y="8.6" width="8" height="10.4" rx="1"/>
+          <rect x="5.1" y="7.8" width="9.8" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/>
+          <rect x="3.4" y="19.6" width="13.2" height="2.8" rx="1.2" fill="currentColor"/>
+        </svg>
+      </div>
+      <span class="who"><span class="dot hunter"></span><span class="name">Hunter</span></span>
+      <span class="hint"><span class="keys"><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></span><span class="txt">move</span></span>
+      <span class="hint"><kbd>Enter</kbd><span class="txt">raise the lantern</span></span>
+    </div>
+  </div>
+
+  <div id="start" class="gutter">
+    <div class="card">
+      <p class="eyebrow">Two players, one keyboard</p>
+      <h1>The hunter <em>and</em> the hearth keeper</h1>
+      <p class="lede">One carries the fire into the dark. One keeps it burning. Both come home to it.</p>
+      <div class="roles">
+        <div class="role"><span class="dot keeper"></span><b>Hearth keeper</b><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span> move <kbd>E</kbd> throw a log on the fire</div>
+        <div class="role"><span class="dot hunter"></span><b>Hunter</b><span class="keys"><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></span> move <kbd>Enter</kbd> raise the lantern</div>
+      </div>
+      <button id="play" type="button">Click to play</button>
+    </div>
+  </div>
+
+  <button id="resume" type="button" hidden>Click to keep playing</button>
+
+  <div id="splash" class="gutter" role="status">
+    <img id="splash-logo" src="assets/logo.png" alt="The hunter and the hearth keeper" width="720" height="554">
+    <div class="loadline">
+      <div class="loadbar" aria-hidden="true"><i></i></div>
+      <p class="loadtxt">Lighting the hearth</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // The loading card. It waits for the logo, fills the bar for a moment, then lifts the logo away.
+  // The wait is for show: the scene behind it is usually ready sooner. A click or key skips it.
+  (function () {
+    var splash = document.getElementById('splash'), logo = document.getElementById('splash-logo');
+    var LOAD_MS = 2000, state = 'waiting', timer = 0;
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function leave() {
+      if (state === 'leaving') return;
+      state = 'leaving';
+      clearTimeout(timer);
+      splash.style.setProperty('--lift', -(logo.getBoundingClientRect().bottom + 60) + 'px');
+      splash.classList.add('is-in', 'is-leaving');
+      setTimeout(function () { splash.hidden = true; }, calm ? 60 : 1300);
+    }
+    function load() {
+      if (state !== 'waiting') return;
+      state = 'loading';
+      splash.style.setProperty('--load-ms', LOAD_MS + 'ms');
+      splash.classList.add('is-in', 'is-loading');
+      timer = setTimeout(leave, LOAD_MS + 300);
+    }
+    if (logo.complete && logo.naturalWidth) load();
+    else { logo.addEventListener('load', load); logo.addEventListener('error', load); setTimeout(load, 1500); }
+    // While the card is up, input skips the wait instead of starting play behind it.
+    splash.addEventListener('pointerdown', function (e) { e.stopPropagation(); leave(); });
+    window.addEventListener('keydown', function (e) {
+      if (state === 'leaving') return;
+      e.stopImmediatePropagation();
+      if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); leave(); }
+    }, true);
+  })();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
+<script src="js/kit.js"></script>
+<script src="js/world.js"></script>
+<script src="js/actors.js"></script>
+<script src="js/view.js"></script>
+<script src="js/game.js"></script>
+<!-- Mechanics: one file each. They register with HH.mechanics and plug into game.js (see the note there). -->
+<script src="js/mech-wood.js"></script>
+<script src="js/mech-supper.js"></script>
+<script src="js/mech-waystone.js"></script>
+<script>
+  (function () {
+    function fail(msg) {
+      var g = document.getElementById('game');
+      g.innerHTML = '<div id="fail"><p>' + msg + '</p></div>';
+    }
+    if (!window.THREE || !window.HH || !window.HH.start) { fail('The demo could not load its 3D library. Check the connection and reload.'); return; }
+    try { window.HH.start(); } catch (err) { console.error(err); fail('This browser could not start the 3D view (WebGL 2 is needed).'); }
+  })();
+</script>
+</body>
+</html>
