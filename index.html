@@ -42,6 +42,7 @@
   --ink-cool: #e6edea;
   --mist: #a7b9ba;
   --line: color-mix(in srgb, var(--ink) 16%, transparent);
+  --pool: color-mix(in srgb, var(--ember) 15%, transparent);   /* firelight around the Keeper's words on a phone */
 
   /* The glade behind the logo. A veil keeps the small print readable, a shade lifts the logo off the trees. */
   --veil: color-mix(in srgb, var(--forest-3) 70%, transparent);
@@ -92,7 +93,7 @@ img { max-width: 100%; height: auto; }
 /* ---------- The split: shared look ---------- */
 .split, .stack { display: flex; flex-direction: column; gap: var(--stack-gap); }
 .hero { --forest: var(--forest-0); }
-.roles { --forest: var(--forest-1); }
+.story, .roles { --forest: var(--forest-1); }
 .fire { --forest: var(--forest-2); }
 .day { --forest: var(--forest-3); }
 
@@ -150,7 +151,7 @@ img { max-width: 100%; height: auto; }
   position: absolute;
   inset: -1.5rem;
   z-index: -3;
-  background: var(--forest-2) url("assets/glade.jpg?v=202611211537") center 42% / cover no-repeat;
+  background: var(--forest-2) url("assets/glade.jpg?v=202611211645") center 42% / cover no-repeat;
   filter: blur(7px);
 }
 .masthead::before,
@@ -197,36 +198,44 @@ img { max-width: 100%; height: auto; }
 }
 .say.both { position: relative; z-index: 2; max-width: none; color: var(--flame); }
 
-/* --below is the room each hero pane leaves under its scene for the shared sentence. */
-.hero-row .pane { padding-bottom: var(--below); }
-.stage { position: relative; height: 13.5rem; }
-.stage img { position: absolute; }
+/* ---------- Scenes ---------- */
+/* The page is told in four pictures: the flight at the top, one scene for each of the two while they are apart,
+   and the two together at the very end. */
+.scene { position: relative; isolation: isolate; }
+.scene img { width: 100%; }
 
-/* The lantern is the only warm thing in the forest. Trees lose light and colour with distance from it. */
-.stage-forest {
-  -webkit-mask-image: linear-gradient(90deg, transparent, var(--ink) 5rem);
-  mask-image: linear-gradient(90deg, transparent, var(--ink) 5rem);
-}
-.lantern { right: calc(var(--edge) + 2.4rem); bottom: 2.4rem; width: 3.5rem; }
-.tree-1 { right: calc(var(--edge) + 7.8rem); bottom: 1.6rem; width: 5.4rem; filter: brightness(0.8) saturate(0.9); }
-.tree-2 { right: calc(var(--edge) + 13.4rem); bottom: 3.7rem; width: 4.3rem; filter: brightness(0.55) saturate(0.6); }
-.tree-3 { right: calc(var(--edge) + 17.6rem); bottom: 1.1rem; width: 6rem; filter: brightness(0.38) saturate(0.4); }
-.tree-4 { right: calc(var(--edge) + 24.2rem); bottom: 3.2rem; width: 4.6rem; filter: brightness(0.26) saturate(0.2); }
-.hearth { left: calc(var(--edge) + 1.4rem); bottom: 1.5rem; width: 10.4rem; }
-
-.hero-row .pane::after {
-  content: "";
+/* Light is only ever fire. Each pool sits behind the flame painted in its scene and is sized from the scene, so it scales with it. */
+.scene::before,
+.scene::after {
   position: absolute;
-  inset: 0;
   z-index: -1;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  aspect-ratio: var(--r, 1);
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, var(--glow-3), var(--glow-2) 22%, var(--glow-1) 56%, transparent);
+  pointer-events: none;
 }
-/* A tight pool around the lantern, a wide one around the hearth. Both fade out before the pane ends. */
-.hero-row .forest::after {
-  background: radial-gradient(circle 9.5rem at calc(100% - var(--edge) - 4.15rem) calc(100% - var(--below) - 4.9rem), var(--glow-3), var(--glow-2) 22%, var(--glow-1) 56%, transparent);
-}
-.hero-row .home::after {
-  background: radial-gradient(ellipse 21rem calc(var(--below) + 4.4rem) at calc(var(--edge) + 5.6rem) calc(100% - var(--below) - 4.6rem), var(--glow-3), var(--glow-2) 16%, var(--glow-1) 52%, transparent);
-}
+.scene::before { content: ""; }
+.scene-flight { --x: 80%; --y: 66%; --w: 34%; }               /* the ember in the lantern */
+.scene-flight::after { content: ""; --x: 26%; --y: 34%; --w: 52%; --r: 3 / 2; }   /* the village burning behind them */
+.scene-hunter { --x: 77%; --y: 71%; --w: 70%; }               /* the lantern in the Hunter's hand */
+.scene-keeper { --x: 66%; --y: 66%; --w: 112%; --r: 3 / 2; }  /* the hearth behind the Keeper */
+.scene-both { --x: 51%; --y: 64%; --w: 40%; }                 /* the lantern set down between them */
+.scene-both::after { content: ""; --x: 81%; --y: 57%; --w: 62%; --r: 3 / 2; }   /* the hearth they come home to */
+
+/* ---------- The story ---------- */
+/* It opens as one view, because the two are together and there is no home yet.
+   The split, and the seam of fire, begin where the ember is laid in the hearth. */
+.opening .scene { align-self: center; width: min(100%, 54rem); margin-bottom: 1.25rem; }
+.bridge > h3 { font-size: var(--t-big); }
+.story-art { display: flex; align-items: flex-end; height: 8.5rem; margin-bottom: 0.4rem; }
+.story-art img { width: auto; max-height: 100%; }
+/* What lives in the dark is seen the way the forest is: with less light and less colour than anything near a fire. */
+.lurk img { filter: brightness(0.78) saturate(0.8); }
+.fireside { --x: 47%; --y: 62%; --w: 190%; --r: 3 / 2; height: 8.5rem; }
+.fireside img { width: auto; height: 100%; }
 
 /* ---------- The two roles ---------- */
 .role-head { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; }
@@ -310,6 +319,43 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
   opacity: 0;
   pointer-events: none;
 }
+
+/* The same cottage before any furniture goes in. It is the same view from the same camera, drawn a little lower
+   in its frame, so it lies over the furnished one and the switch under the picture fades it in. */
+.closing { display: grid; gap: 0.9rem 1.25rem; align-items: center; }
+.closing > * { min-width: 0; }
+.closing-view .bare {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(-2%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.closing-view.is-bare .bare { opacity: 1; }
+
+.furnish {
+  display: inline-flex;
+  justify-self: start;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--home-shade);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.furnish[hidden] { display: none; }
+.furnish button {
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tan);
+  font: 500 0.9375rem/1 var(--font-body);
+  cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+.furnish button:hover { color: var(--ink); }
+.furnish button[aria-pressed="true"] { background: var(--flame); color: var(--home-shade); }
 
 /* The one orchestrated moment. The script adds these classes; without it the view simply rests closed. */
 .is-apart .half-forest,
@@ -444,72 +490,94 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
 }
 .coda em { font-style: normal; color: var(--flame); }
 
+/* ---------- The end of the page: the two together ---------- */
+.ending { overflow: hidden; background: var(--night); }
+.ending .wrap { display: flex; flex-direction: column; align-items: center; gap: 1.25rem; padding-block: 1rem 5rem; text-align: center; }
+.ending .scene { width: min(100%, 44rem); }
+.ending .say.both { font-size: var(--t-h2); line-height: 1.12; }
+.ending .coda { max-width: 30em; font-size: clamp(1.15rem, 1.8vw, 1.35rem); line-height: 1.4; color: var(--tan); }
+.ending .play { margin-top: 1rem; }
+
 .foot { background: var(--night); border-top: 1px solid var(--line); }
 .foot .wrap { padding-block: 1.5rem 2.5rem; font-size: var(--t-small); color: var(--tan); }
 
-/* ---------- Phone and tablet: the split turns on its side. Forest above, home below. ---------- */
+/* ---------- Phone and tablet: one walk from the dark forest to the fire. ----------
+   No lines, no arrows and no boxes. The ground is one piece: it cools with depth and warms again toward home.
+   The Hunter's words stand in the dark on the left. The Keeper's words stand a step to the right, in a
+   pool of firelight with no edge. Order alone says what follows from what. */
 @media (max-width: 53.99rem) {
-  .split { --stack-gap: 0.625rem; --edge: 0rem; }
-
-  .row { grid-template-columns: auto minmax(0, 1fr); --pane-pad: 1.75rem; }
-  .pane.forest { grid-area: 2 / 1 / 3 / 3; }
-  .pane.home { grid-area: 4 / 1 / 5 / 3; }
-  .pane-in { max-width: 36rem; }
-  .roles .row { --pane-pad: 2.25rem; }
-
-  .seam {
-    grid-area: 3 / 1 / 4 / 3;
-    align-items: center;
-    min-height: 2px;
-    background: linear-gradient(180deg, var(--forest) 50%, var(--home) 50%);
+  .split {
+    --stack-gap: 0rem;
+    --step: 1.75rem;
+    padding-bottom: 1rem;
+    /* holds the first colour until past the masthead, so the glade's lower edge meets the ground without a step */
+    background: linear-gradient(180deg, var(--forest-0) 12%, var(--forest-1) 30%, var(--forest-2) 56%, var(--forest-3) 84%, var(--forest-4));
   }
-  .seam::before { flex: 1; height: 2px; }
-  .link > .seam { grid-column: 2 / 3; }
 
+  .row { display: flex; flex-direction: column; --pane-pad: 0rem; }
+  .row + .row { margin-top: 3.5rem; }
+  .pane, .pane.forest, .pane.home { background: none; overflow: visible; }
+  .pane-in { max-width: 36rem; }
+  /* the room between the two halves of a pair */
+  .seam + .pane { margin-top: 1.75rem; }
+  .roles .seam + .pane { margin-top: 4rem; }
+
+  /* firelight around the Keeper's words */
+  .pane.home::before {
+    content: "";
+    position: absolute;
+    inset: -3rem 0 -3rem 0;
+    z-index: -1;
+    background: radial-gradient(closest-side, var(--pool), transparent);
+    pointer-events: none;
+  }
+  .effect::after { display: none; }
+
+  /* the seam and its arrows belong to the wide screen, where the two sides stand next to each other */
+  .seam, .arrow { display: none; }
+
+  /* the two voices step left and right, as the two sides do on a wide screen */
+  .story .pane.forest .pane-in,
+  .link .pane.forest .pane-in,
+  .phase .pane.forest .pane-in { margin-right: var(--step); }
+  .story .pane.home .pane-in,
+  .link .pane.home .pane-in,
+  .phase .pane.home .pane-in { margin-left: var(--step); }
+
+  /* labels are plain headings above their pair */
   .bead { align-items: baseline; gap: 0.6rem; }
-  .phase > .label {
-    grid-area: 1 / 1 / 2 / 3;
+  .bead::before { display: none; }
+  .label {
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
-    padding-block: 0.9rem 0.7rem;
+    padding-bottom: 0.9rem;
   }
-  .phase > .label::before { display: none; }
-  .link > .label {
-    grid-area: 3 / 1 / 4 / 2;
-    align-items: center;
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
-    padding-right: 0.7rem;
-    padding-block: 0.4rem;
-    background: linear-gradient(180deg, var(--forest) 50%, var(--home) 50%);
-  }
-  .link > .label::before {
-    position: absolute;
-    left: 0;
-    top: calc(50% - 1px);
-    width: calc(max(16px, env(safe-area-inset-left, 0px)) - 7px);
-    height: 2px;
-  }
-  .arrow { width: 1.5rem; height: auto; }
-  .to-keeper .arrow { transform: rotate(90deg); }
-  .to-hunter .arrow { transform: rotate(-90deg); }
+  .link .bead h3 { font-size: var(--t-point); }
 
-  .bridge { padding-block: 2.25rem 0.75rem; }
-  .bridge.close { padding-block: 1.5rem 1rem; background: linear-gradient(180deg, var(--night), var(--home)); }
-  .bridge.close .bead::before { display: none; }
+  /* section openings are set apart by room alone */
+  .bridge { padding-block: 4.5rem 2.25rem; }
+  .bridge.last-word { padding-block: 3.5rem 0; }
+  .bridge.close { padding-block: 4rem 0.5rem; background: linear-gradient(180deg, var(--forest-4), var(--home)); }
 
   .masthead { --below-hero: var(--forest-0); }
   .logo { width: min(100%, 23rem); }
 
-  .stage { height: 12rem; }
-  .hero-row > .pane.forest { --below: 0rem; }
-  .hero-row > .pane.home { grid-row: 4 / 6; --below: 4.5rem; }
-  .say.both {
-    grid-area: 5 / 1 / 6 / 3;
-    align-self: end;
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
-    padding-right: max(16px, env(safe-area-inset-right, 0px));
-    padding-block: 0.75rem 1.75rem;
-  }
+  /* the two wide scenes are wider than the screen and run off both edges; nothing may widen the page */
+  .split { overflow-x: clip; }
+  .opening { padding-top: 0; }
+  .opening .scene { width: min(100% + 6rem, 54rem); }
+  .ending .scene { width: min(100% + 5rem, 44rem); }
+  .bridge.beat { padding-block: 3.5rem 2.25rem; }
+  .bridge.beat h3 { font-size: 1.45rem; }
+  /* the two signed scenes take the full width; only the words under them step left and right */
+  .story .scene-hunter { margin-right: calc(var(--step) * -1); }
+  .story .scene-keeper { margin-left: calc(var(--step) * -1); }
+  .story-art { height: auto; }
+  .story-art img { max-height: 8.5rem; }
+  .fireside { height: 7rem; }
+
+  .roles { padding-top: 4rem; }
+  .facts { border-top: 0; padding-top: 0.25rem; }
 
   .closing-view { --ax: 0%; --ay: -4%; --clip-forest: inset(0 0 49.9% 0); --clip-home: inset(49.9% 0 0 0); --flare-dir: 180deg; }
   .closing-view::before { left: 0; right: 0; top: calc(50% - 1px); height: 2px; }
@@ -520,7 +588,8 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
 
 /* ---------- Desktop: the split stands upright. Forest left, home right. ---------- */
 @media (min-width: 54rem) {
-  .split { --stack-gap: 0rem; --half-seam: 5rem; --edge: calc(var(--half-seam) + 0.25rem); }
+  /* the ground under every row, so no darker hairline can show where two rows meet */
+  .split { --stack-gap: 0rem; --half-seam: 5rem; background: linear-gradient(90deg, var(--forest-2) 50%, var(--home) 50%); }
 
   .row {
     grid-template-columns: minmax(0, 1fr) var(--half-seam) var(--half-seam) minmax(0, 1fr);
@@ -569,21 +638,32 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
       linear-gradient(90deg, transparent 50%, var(--home) 50%),
       linear-gradient(180deg, var(--from), var(--to));
   }
+  .story .bridge { --from: var(--forest-1); --to: var(--forest-1); }
+  .bridge.beat { padding-block: 2.5rem 1rem; }
+  .bridge.last-word { padding-block: 2rem 2.25rem; }
+  .story .row { --pane-pad: 2rem; }
+  /* The opening is one ground. Toward its end the right half warms into the home, and below it the seam of fire begins. */
+  .opening {
+    padding-top: 0;
+    background:
+      linear-gradient(180deg, var(--forest-0) 55%, var(--forest-1)) left / 50% 100% no-repeat,
+      linear-gradient(180deg, var(--forest-0) 55%, var(--home)) right / 50% 100% no-repeat,
+      var(--forest-0);
+  }
+  .opening + .row > .seam {
+    -webkit-mask-image: linear-gradient(180deg, transparent, var(--ink) 5rem);
+    mask-image: linear-gradient(180deg, transparent, var(--ink) 5rem);
+  }
   .fire .bridge { --from: var(--forest-1); --to: var(--forest-2); }
   .day .bridge { --from: var(--forest-2); --to: var(--forest-3); }
   .bridge.close { --from: var(--forest-4); --to: var(--home); --pane-pad: 3.25rem; padding-block: 0 3.5rem; }
 
-  .masthead { --below-hero: linear-gradient(90deg, var(--forest-0) 50%, var(--home) 50%); }
-
-  .hero-row { --pane-pad: 1.25rem; grid-template-rows: auto minmax(0, 1fr) auto; }
-  .hero-row > .pane { grid-row: 1 / 4; --below: 6rem; }
-  .hero-row > .pane.forest { background: linear-gradient(180deg, var(--forest-0) 55%, var(--forest-1)); }
-  .forest .say { margin-left: auto; text-align: right; }
-  .say.both { grid-area: 3 / 1 / 4 / 5; justify-self: center; padding-block: 1rem 2.75rem; text-align: center; }
-  .stage { height: 14.5rem; }
+  .masthead { --below-hero: var(--forest-0); }
+  .say.both { text-align: center; }
 
   .home-intro { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: end; }
-  .closing-view { --ax: -3.2%; --ay: 0%; --clip-forest: inset(0 49.9% 0 0); --clip-home: inset(0 0 0 49.9%); --flare-dir: 90deg; }
+  .closing { grid-template-columns: auto minmax(0, 1fr); }
+  .closing-view { grid-column: 1 / -1; --ax: -3.2%; --ay: 0%; --clip-forest: inset(0 49.9% 0 0); --clip-home: inset(0 0 0 49.9%); --flare-dir: 90deg; }
   .closing-view::before { top: 0; bottom: 0; left: calc(50% - 1px); width: 2px; }
   .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
@@ -620,14 +700,14 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
       <div class="masthead">
         <div class="backdrop" aria-hidden="true"></div>
         <h1 class="title gutter">
-          <img class="logo" src="assets/logo.png?v=202611211537" alt="The hunter and the hearth keeper" width="960" height="738">
+          <img class="logo" src="assets/logo.png?v=202611211645" alt="The hunter and the hearth keeper" width="960" height="738">
         </h1>
         <div class="intro gutter">
           <p class="intro-lead">A cozy co-op game for two players about one home and one fire.</p>
           <div class="intro-cta">
             <a class="play" href="demo/">
-              <img src="assets/play-demo.png?v=202611211537" alt="Play the demo" width="720" height="277">
-              <img class="play-lit" src="assets/play-demo-lit.png?v=202611211537" alt="" aria-hidden="true" width="720" height="277">
+              <img src="assets/play-demo.png?v=202611211645" alt="Play the demo" width="720" height="277">
+              <img class="play-lit" src="assets/play-demo-lit.png?v=202611211645" alt="" aria-hidden="true" width="720" height="277">
             </a>
             <p class="intro-note">Runs in the browser. Two players share one keyboard.</p>
           </div>
@@ -635,32 +715,95 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
         </div>
       </div>
 
-      <div class="row plain hero-row">
+    </header>
+
+    <!-- The story. It opens as one view: the two are together, and there is no home yet. -->
+    <section class="story stack" aria-labelledby="story-h">
+      <div class="bridge opening gutter">
+        <div class="scene scene-flight">
+          <img src="assets/scene-flight.webp?v=202611211645" alt="Two people run from a burning village along a stone path. Behind them the great hearth stands in flames under dark smoke, and an orc and two goblins stand by a red banner. The Hearth Keeper looks back. The Hunter runs ahead with a lantern that holds a glowing ember." width="1600" height="789">
+        </div>
+        <p class="kicker">The story so far</p>
+        <h2 id="story-h">One ember from a fallen village</h2>
+        <p>There was a village at the far end of the forest road, and at its centre a great hearth that had never gone out. Orcs and goblins came in the night and took the village. When the great hearth was smothered, the standing stones along the road went dark one after another, and the forest closed over it.</p>
+        <p>Two people got out. One of them carried an ember from the great hearth in an old lantern. They walked until the lantern was almost spent.</p>
+      </div>
+
+      <!-- From here the page is split, and the seam of fire begins. -->
+      <div class="row plain">
         <div class="pane forest">
           <div class="pane-in gutter">
-            <p class="say">One carries the fire into the dark.</p>
-          </div>
-          <div class="stage stage-forest">
-            <img class="tree-4" src="assets/pine-small.png?v=202611211537" alt="" width="117" height="164">
-            <img class="tree-3" src="assets/pine.png?v=202611211537" alt="" width="127" height="186">
-            <img class="tree-2" src="assets/pine-small.png?v=202611211537" alt="" width="117" height="164">
-            <img class="tree-1" src="assets/pine.png?v=202611211537" alt="" width="127" height="186">
-            <img class="lantern" src="assets/lantern.png?v=202611211537" alt="A small lit lantern, the only warm light among dark pines" width="82" height="122">
+            <p class="point">The road is dark.</p>
+            <p>The capital lies on the other side of the forest, and someone has to tell the king what happened. But no one can walk a dark road. The lantern burns down, and the things that live in the dark close in.</p>
           </div>
         </div>
         <div class="seam" aria-hidden="true"></div>
         <div class="pane home">
           <div class="pane-in gutter">
-            <p class="say">One keeps it burning.</p>
-          </div>
-          <div class="stage stage-home">
-            <img class="hearth" src="assets/hearth.png?v=202611211537" alt="A stone hearth with a fire burning and split logs stacked beside it" width="167" height="159">
+            <p class="point">The ember found a hearth.</p>
+            <p>In a clearing by the old road stood a cabin with its roof fallen in and a cold stone hearth. They laid the ember in it. The fire caught, and the dark drew back to the edge of the clearing.</p>
           </div>
         </div>
-        <!-- The third sentence belongs to both players, so it sits on the seam over both panes. -->
-        <p class="say both">Both come home to it.</p>
       </div>
-    </header>
+
+      <div class="bridge beat gutter">
+        <h3>An old post, taken up again</h3>
+        <p>The cabin was once a road warden's house. Long ago a hearth keeper lived here and kept the stones lit, and travellers walked from fire to fire. The two of them take up that work.</p>
+      </div>
+
+      <!-- The first two sentences of the game are painted on the signs in these two scenes. -->
+      <div class="row plain">
+        <div class="pane forest">
+          <div class="pane-in gutter">
+            <div class="scene scene-hunter">
+              <img src="assets/scene-hunter.webp?v=202611211645" alt="One carries the fire into the dark. The Hunter strides out past dark pines with a lit lantern in hand, under a wooden sign that carries the sentence." width="900" height="642" loading="lazy" decoding="async">
+            </div>
+            <p class="point">One relights the road.</p>
+            <p>The Hunter carries the flame out and lights the next standing stone. Each lit stone is a pool of safe light and a stretch of road won back. Restless and practical, the Hunter is the first to say "one&nbsp;more&nbsp;clearing".</p>
+          </div>
+        </div>
+        <div class="seam" aria-hidden="true"></div>
+        <div class="pane home">
+          <div class="pane-in gutter">
+            <div class="scene scene-keeper">
+              <img src="assets/scene-keeper.webp?v=202611211645" alt="One keeps it burning. The Hearth Keeper sits reading beside a stone hearth with a fire in it and split logs stacked next to it, under a wooden sign that carries the sentence." width="900" height="642" loading="lazy" decoding="async">
+            </div>
+            <p class="point">One makes the light reach.</p>
+            <p>The Hearth Keeper stays and keeps the fire. The light only reaches as far as the hearth is strong, so every evening spent making the home better is a step toward the capital. Patient and inventive, the Keeper sees what a place could be.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="row plain">
+        <div class="pane forest">
+          <div class="pane-in gutter">
+            <div class="story-art lurk">
+              <img src="assets/dark-trio.webp?v=202611211645" alt="Concept art of three creatures: a shaggy brown boar, a hooded goblin with a short blade, and a large grey troll with a log club on its shoulder." width="1000" height="344" loading="lazy" decoding="async">
+            </div>
+            <p class="point">Some things live in the dark.</p>
+            <p>The dark is not a creature. It is what the forest becomes where no fire is kept. Goblins followed it down the road and keep to the edge of the light, boars were here before any of this, and trolls live deeper in, old, slow and large.</p>
+          </div>
+        </div>
+        <div class="seam" aria-hidden="true"></div>
+        <div class="pane home">
+          <div class="pane-in gutter">
+            <div class="story-art">
+              <div class="scene fireside">
+                <img src="assets/hearth.png?v=202611211645" alt="A stone hearth with a fire burning and split logs stacked beside it" width="167" height="159" loading="lazy" decoding="async">
+              </div>
+            </div>
+            <p class="point">Others will find the fire.</p>
+            <p>Others fled down the same road and dropped what they carried: a child's carved horse, a bundle of letters, a wedding cup. The Hunter brings these keepsakes home. And once the second stone is lit, someone knocks. It is the first traveller on the road in a long time.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bridge last-word gutter">
+        <p class="say both">Staying is how they go.</p>
+        <p>They cannot simply walk to the capital, because the lantern does not last the distance. A stronger hearth lights a longer lantern, so the way to the king runs through the home they build. Reaching the capital is not the end, either. It is the day the road is whole in one direction.</p>
+        <p class="note">The first slice has no dialogue, cutscenes or quest log. The story is told by what you do and what you find.</p>
+      </div>
+    </section>
 
     <!-- The two roles -->
     <section class="roles stack" aria-label="The two roles">
@@ -669,7 +812,7 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
           <div class="pane-in gutter">
             <div class="role-head">
               <div class="role-figure hunter">
-                <img src="assets/hunter.png?v=202611211537" alt="Concept art of the Hunter in profile, mid-stride: tousled brown hair, a blue scarf, a leather vest with a gold buckled belt, a rolled bedroll pack and boots" width="492" height="720">
+                <img src="assets/hunter.png?v=202611211645" alt="Concept art of the Hunter in profile, mid-stride: tousled brown hair, a blue scarf, a leather vest with a gold buckled belt, a rolled bedroll pack and boots" width="492" height="720">
               </div>
               <div class="role-text">
                 <h2>The Hunter</h2>
@@ -704,7 +847,7 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
           <div class="pane-in gutter">
             <div class="role-head">
               <div class="role-figure keeper">
-                <img src="assets/keeper.png?v=202611211537" alt="Concept art of the Hearth Keeper in three-quarter view, reading a book with a leaf on its cover: blonde hair in a bun, a cream shirt, a brown work apron, a satchel and boots" width="397" height="720">
+                <img src="assets/keeper.png?v=202611211645" alt="Concept art of the Hearth Keeper in three-quarter view, reading a book with a leaf on its cover: blonde hair in a bun, a cream shirt, a brown work apron, a satchel and boots" width="397" height="720">
               </div>
               <div class="role-text">
                 <h2>The Hearth Keeper</h2>
@@ -894,10 +1037,16 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
 
       <figure class="closing">
         <div class="closing-view">
-          <img class="half-forest" src="assets/home-furnished.png?v=202611211537" alt="Concept art of the cottage seen from above with its roof hidden. The hearth is lit, candles stand on the supper table, and one character stands in the main room." width="765" height="490">
-          <img class="half-home" src="assets/home-furnished.png?v=202611211537" alt="" aria-hidden="true" width="765" height="490">
+          <img class="half-forest" src="assets/home-furnished.png?v=202611211645" alt="Concept art of the cottage seen from above with its roof hidden. The hearth is lit, candles stand on the supper table, and one character stands in the main room." width="765" height="490">
+          <img class="half-home" src="assets/home-furnished.png?v=202611211645" alt="" aria-hidden="true" width="765" height="490">
+          <img class="bare" src="assets/home-empty.png?v=202611211645" alt="" aria-hidden="true" width="766" height="598" loading="lazy" decoding="async">
         </div>
-        <figcaption>Concept art, not a screenshot. The cottage with its roof hidden and the hearth lit.</figcaption>
+        <!-- Hidden until the script at the end of the page runs. Without it the picture simply stays furnished. -->
+        <div class="furnish" role="group" aria-label="Furniture in the cottage" hidden>
+          <button type="button" data-mode="bare" aria-pressed="false">Empty</button>
+          <button type="button" data-mode="furnished" aria-pressed="true">Furnished</button>
+        </div>
+        <figcaption aria-live="polite" data-bare="Concept art, not a screenshot. The same cottage before any furniture goes in.">Concept art, not a screenshot. The cottage with its roof hidden and the hearth lit.</figcaption>
       </figure>
 
       <ol class="steps">
@@ -922,7 +1071,7 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
           <p>Warmth is the only progression meter. Both players fill it by doing what they like doing.</p>
         </div>
         <figure class="cottage">
-          <img src="assets/cottage.png?v=202611211537" alt="Concept art of the cottage on a square of grass, with lit windows, two lanterns by the door, a fenced garden and a stone path" width="542" height="472" loading="lazy" decoding="async">
+          <img src="assets/cottage.png?v=202611211645" alt="Concept art of the cottage on a square of grass, with lit windows, two lanterns by the door, a fenced garden and a stone path" width="542" height="472" loading="lazy" decoding="async">
           <figcaption>Concept art. The cottage in its clearing.</figcaption>
         </figure>
       </div>
@@ -994,42 +1143,42 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
 
       <div class="gallery">
         <figure class="shot shot-a">
-          <img src="assets/home-empty.png?v=202611211537" alt="Concept art of the same cottage with its roof hidden and no furniture. Bare wooden floors, a cold stone hearth and one character standing inside." width="766" height="598" loading="lazy" decoding="async">
+          <img src="assets/home-empty.png?v=202611211645" alt="Concept art of the same cottage with its roof hidden and no furniture. Bare wooden floors, a cold stone hearth and one character standing inside." width="766" height="598" loading="lazy" decoding="async">
           <figcaption>The cottage shell before any furniture goes in. The shell is fixed. Furniture goes on a grid inside it.</figcaption>
         </figure>
         <figure class="shot shot-b">
           <div class="plate figure">
-            <img src="assets/hunter.png?v=202611211537" alt="The Hunter in profile, mid-stride: brown hair, a blue scarf, a leather vest and a rolled bedroll pack." width="492" height="720" loading="lazy" decoding="async">
+            <img src="assets/hunter.png?v=202611211645" alt="The Hunter in profile, mid-stride: brown hair, a blue scarf, a leather vest and a rolled bedroll pack." width="492" height="720" loading="lazy" decoding="async">
           </div>
           <figcaption>The Hunter, mid-stride. The head is about half the body height, because that reads best in half a screen.</figcaption>
         </figure>
         <figure class="shot shot-c">
           <div class="plate figure">
-            <img src="assets/keeper.png?v=202611211537" alt="The Hearth Keeper in three-quarter view, reading a book: blonde hair in a bun, a cream shirt and a brown apron with a satchel." width="397" height="720" loading="lazy" decoding="async">
+            <img src="assets/keeper.png?v=202611211645" alt="The Hearth Keeper in three-quarter view, reading a book: blonde hair in a bun, a cream shirt and a brown apron with a satchel." width="397" height="720" loading="lazy" decoding="async">
           </div>
           <figcaption>The Hearth Keeper, with a book. Both characters share one rig and wear two outfits.</figcaption>
         </figure>
         <figure class="shot shot-d">
           <div class="plate">
-            <img src="assets/furniture.png?v=202611211537" alt="Eleven furniture studies, including a bed, a lantern on a side table, a supper table with candles, an armchair, a chest, a barrel, a bookshelf and a stone hearth" width="557" height="244" loading="lazy" decoding="async">
+            <img src="assets/furniture.png?v=202611211645" alt="Eleven furniture studies, including a bed, a lantern on a side table, a supper table with candles, an armchair, a chest, a barrel, a bookshelf and a stone hearth" width="557" height="244" loading="lazy" decoding="async">
           </div>
           <figcaption>Furniture studies. The first slice has about 8 buildable pieces and 5 keepsakes.</figcaption>
         </figure>
         <figure class="shot shot-e">
           <div class="plate enemy">
-            <img src="assets/boar-views.png?v=202611211537" alt="The boar turned around in five views: a round, shaggy brown boar with a crest of spiky fur, a pink snout and cream tusks." width="880" height="194" loading="lazy" decoding="async">
+            <img src="assets/boar-views.png?v=202611211645" alt="The boar turned around in five views: a round, shaggy brown boar with a crest of spiky fur, a pink snout and cream tusks." width="880" height="194" loading="lazy" decoding="async">
           </div>
           <figcaption>The boar, from its enemy sheet. It lives in the Deepwood. The slime at the Edge has no new art yet. The dark itself is the third threat.</figcaption>
         </figure>
         <figure class="shot shot-f">
           <div class="plate enemy">
-            <img src="assets/goblin-views.png?v=202611211537" alt="A goblin turned around in five views: green skin, big pointed ears, a long orange nose and a stitched brown hood, with a satchel and a leather belt." width="880" height="192" loading="lazy" decoding="async">
+            <img src="assets/goblin-views.png?v=202611211645" alt="A goblin turned around in five views: green skin, big pointed ears, a long orange nose and a stitched brown hood, with a satchel and a leather belt." width="880" height="192" loading="lazy" decoding="async">
           </div>
           <figcaption>Exploration, not in the first slice. A goblin, from an enemy sheet.</figcaption>
         </figure>
         <figure class="shot shot-g">
           <div class="plate enemy">
-            <img src="assets/troll-views.png?v=202611211537" alt="A large troll turned around in five views: a mossy grey-green brute with tusks, rock shoulder armour, a rope belt and a mane of brown hair." width="880" height="199" loading="lazy" decoding="async">
+            <img src="assets/troll-views.png?v=202611211645" alt="A large troll turned around in five views: a mossy grey-green brute with tusks, rock shoulder armour, a rope belt and a mane of brown hair." width="880" height="199" loading="lazy" decoding="async">
           </div>
           <figcaption>Exploration, not in the first slice. A large troll, from an enemy sheet.</figcaption>
         </figure>
@@ -1088,7 +1237,21 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
           </dl>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ The last picture: the two together ============ -->
+  <section class="ending" aria-label="Coming home">
+    <div class="wrap gutter">
+      <div class="scene scene-both">
+        <img src="assets/scene-together.webp?v=202611211645" alt="The Hunter walks in from the pines toward the Hearth Keeper, who sits reading by the lit hearth. The lantern stands on a stone between them." width="1400" height="557" loading="lazy" decoding="async">
+      </div>
+      <p class="say both">Both come home to it.</p>
       <p class="coda">The hunter and the hearth keeper is a game about <em>one fire</em>. One of you carries it out, one of you keeps it in, and every evening it is a little bigger than it was.</p>
+      <a class="play" href="demo/">
+        <img src="assets/play-demo.png?v=202611211645" alt="Play the demo" width="720" height="277" loading="lazy" decoding="async">
+        <img class="play-lit" src="assets/play-demo-lit.png?v=202611211645" alt="" aria-hidden="true" width="720" height="277" loading="lazy" decoding="async">
+      </a>
     </div>
   </section>
 </main>
@@ -1114,6 +1277,26 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
       watcher.disconnect();
     }, { threshold: 0.35 });
     watcher.observe(view);
+  })();
+
+  // The switch under the homecoming picture shows the same cottage with and without furniture.
+  (function () {
+    var view = document.querySelector(".closing-view");
+    var choice = document.querySelector(".furnish");
+    var caption = document.querySelector(".closing figcaption");
+    if (!view || !choice || !caption) return;
+    var words = { furnished: caption.textContent, bare: caption.getAttribute("data-bare") };
+    choice.hidden = false;
+    choice.addEventListener("click", function (event) {
+      var picked = event.target.closest("button");
+      if (!picked) return;
+      var bare = picked.getAttribute("data-mode") === "bare";
+      view.classList.toggle("is-bare", bare);
+      choice.querySelectorAll("button").forEach(function (button) {
+        button.setAttribute("aria-pressed", String(button === picked));
+      });
+      caption.textContent = bare ? words.bare : words.furnished;
+    });
   })();
 </script>
 </body>
