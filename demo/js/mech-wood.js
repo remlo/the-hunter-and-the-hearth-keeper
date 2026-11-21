@@ -7,7 +7,7 @@
   /* ---------- tuning: everything to adjust by feel lives here ---------- */
   const TUNE = {
     bundles: 9,              // bundles lying in the forest at any time
-    carryMax: 3,             // most the Hunter can carry
+    carryMax: 5,             // most the Hunter can carry
     reach: 1.2,              // pick-up distance
     deliverReach: 2.2,       // distance from the pile at which carried wood flies off the Hunter's back
     squashS: 0.12,           // anticipation: the bundle crouches before it hops
@@ -21,11 +21,20 @@
     glimmerEvery: 1.3,       // a bundle in sight of the Hunter gives off a little dust this often
     glimmerRange: 5.5,
     promptHeight: 0.95,
-    store: { x: 0.9, z: 2.9 },   // the outdoor stack, by the cottage door
-    storeMax: 15,            // how tall it can grow (five rows: 5, 4, 3, 2, 1)
-    keeperReach: 1.9,        // how close the Keeper must stand to take a log from it
-    keeperDeliverReach: 1.9  // how close to the indoor pile the Keeper must be to put it down
+    yardLogs: 4,             // logs on the pile outside when the game starts (the bottom row)
+    yardMax: 10,             // most the pile outside can hold; it only takes what does not fit on the hearth rack
+    yardReach: 2.1,          // distance from that pile at which the Hunter's surplus flies off the pack, and the Keeper can fetch
+    armful: 5,               // most logs the Keeper takes from the pile outside in one go
+    fetchGapS: 0.09,         // delay between logs hopping from the pile into the Keeper's arms
+    fetchFlyS: 0.3,          // flight of one such log
+    fetchHeight: 0.55,       // arc height of that hop
+    yardPromptHeight: 1.45   // the Keeper's key prompt floats this high over the pile outside
   };
+
+  /* The Keeper's armful: five logs held against the chest. [depth, height, yaw, slide along the log] inside the bundle,
+     filled from the chest outwards (bottom row first, then the top row), so one or two logs rest against the body.
+     Like the Hunter's pack the logs lie across the body, so positions differ in depth and height, never along x. */
+  const ARMS = [[-0.104, 0, 0.04, 0.01], [0, 0, -0.03, -0.01], [0.104, 0, 0.03, 0.012], [-0.052, 0.09, -0.04, -0.01], [0.052, 0.09, 0.03, 0.01]];
 
   /* Fixed places a bundle can lie: [u along the path, side from -1 to 1 as a share of the half-width].
      Kept off the centre line so wood is beside the path, never in the way. */
@@ -53,13 +62,13 @@
   const M = {
     name: 'wood',
     bundles: [], carried: null, pips: [], pipsEl: null, prompt: null, flyLogs: [],
-    store: 0, held: false, heldPop: 1, takeBusy: false, takeT: 0, storeSlots: [], storeLogs: [], heldLog: null, storePrompt: null, storeK: 0,
+    yard: 0, arms: 0, armsG: null, fetch: null, kDeliver: null, yardPrompt: null, yardPromptK: 0,
     carry: 0, deliver: null, regrow: [], gathered: 0, dbg: false, wobble: 0, promptK: 0, promptAt: null, glimmer: 0,
 
     init(ctx) {
       const { T, W, scene, hunter, keeper } = ctx;
       ctx.TUNE.autoRestock = false;
-      M.T = T;
+      M.T = T; M.ctx = ctx;
 
       // spots that would trap a walker (trees, rocks) are dropped up front
       M.spots = SPOTS.map((s, i) => {
@@ -73,12 +82,15 @@
       for (const s of M.spots) { if (starts.length >= TUNE.bundles) break; if (starts.indexOf(s) < 0) starts.push(s); }
       starts.slice(0, TUNE.bundles).forEach(s => M.addBundle(ctx, s, 1));
 
-      // what the Hunter carries: up to three logs strapped across the pack
+      // what the Hunter carries: up to five logs strapped across the pack, three below and two on top
       M.carried = new T.Group();
-      M.carried.position.set(0, 0.0, -0.4);
-      [[-0.095, 0.115, 0.05], [0.095, 0.115, -0.04], [0, 0.265, 0.02]].forEach((p, i) => {
+      M.carried.position.set(0, 0.0, -0.5);
+      // each log lies across the back (left to right); its place in the bundle is in depth and height, so the ends show a 3 + 2 stack
+      // [depth, height, yaw, slide along the log]; filled from the Hunter's back outwards, bottom row first, then the top row,
+      // so a single log rests against the back and never hangs in the air behind it
+      [[0.15, 0.115, 0.05, 0.015], [0, 0.115, 0.03, 0.02], [-0.15, 0.115, -0.04, -0.025], [0.075, 0.245, 0.04, -0.02], [-0.075, 0.245, -0.03, 0.025]].forEach((p, i) => {
         const log = W.makeLog(0.52, 0.072);
-        log.position.set(p[0], p[1], 0);
+        log.position.set(p[3], p[1], p[0]);
         log.rotation.set(0, Math.PI / 2 + p[2], 0);
         log.userData.home = log.position.clone();
         log.userData.pop = 1;
@@ -87,8 +99,26 @@
       });
       hunter.torso.add(M.carried);
 
-      // three flying logs for deliveries
-      for (let i = 0; i < 6; i++) {
+      // what the Keeper carries: a small bundle held against the chest, between the hands
+      M.armsG = new T.Group();
+      M.armsG.position.set(0, 0.2, 0.33);
+      ARMS.forEach(p => {
+        const log = W.makeLog(0.36, 0.05);
+        log.position.set(p[3], p[1], p[0]);
+        log.rotation.set(0, Math.PI / 2 + p[2], 0);
+        log.userData.home = log.position.clone();
+        log.userData.pop = 1;
+        log.visible = false;
+        M.armsG.add(log);
+      });
+      keeper.torso.add(M.armsG);
+
+      // the pile outside starts with its bottom row
+      ctx.st.yard = M.yard = clamp(TUNE.yardLogs, 0, TUNE.yardMax);
+      W.yardLogs.forEach((l, i) => { l.visible = i < M.yard; l.userData.pop = 1; });
+
+      // flying logs for deliveries and for the Keeper's armful
+      for (let i = 0; i < 12; i++) {
         const l = W.makeLog(0.52, 0.072);
         l.visible = false; scene.add(l); M.flyLogs.push(l);
       }
@@ -96,35 +126,10 @@
       M.prompt = HH.makePrompt('↵');
       M.prompt.visible = false;
       scene.add(M.prompt);
-      M.storePrompt = HH.makePrompt('E');
-      M.storePrompt.visible = false;
-      scene.add(M.storePrompt);
-
-      // the outdoor stack by the door: fifteen slots in rows of five, four, three, two and one
-      const S = TUNE.store;
-      M.storeSlots = [];
-      for (let r = 0; r < 5; r++) for (let i = 0; i < 5 - r; i++) M.storeSlots.push(new T.Vector3(S.x + (i - (4 - r) / 2) * 0.29, 0.13 + r * 0.235, S.z));
-      M.storeLogs = M.storeSlots.map((p, i) => {
-        const l = W.makeLog(0.78, 0.13);
-        l.position.copy(p); l.rotation.set(0, (i % 3 - 1) * 0.05, 0);
-        l.visible = false; l.userData.popT = 1;
-        scene.add(l);
-        return l;
-      });
-      // a low stone slab under it so the stack sits like a place, and it blocks walking
-      const kk = new HH.Kit();
-      kk.box(1.75, 0.05, 1.0, S.x, 0.025, S.z, HH.col(HH.PAL.stone), { r: 0.04 });
-      const slab = kk.build(); scene.add(slab);
-      W.col.boxes.push({ x0: S.x - 0.8, x1: S.x + 0.8, z0: S.z - 0.42, z1: S.z + 0.42 });
-
-      // the log the Keeper carries on a shoulder, and a hand-off flight pool entry uses it as its target
-      M.heldLog = W.makeLog(0.62, 0.085);
-      M.heldLog.position.set(0.27, 0.56, 0.02);
-      M.heldLog.rotation.set(0.12, 0.1, -0.12);
-      M.heldLog.visible = false;
-      keeper.torso.add(M.heldLog);
-
-      // interface: three pips in the Hunter's chip
+      M.yardPrompt = HH.makePrompt('E');       // the Keeper's key (a tap mark on a phone, made by the same helper)
+      M.yardPrompt.visible = false;
+      scene.add(M.yardPrompt);
+      // interface: one pip per log the Hunter can carry
       const style = document.createElement('style');
       style.textContent = CSS;
       document.head.appendChild(style);
@@ -289,23 +294,20 @@
       M.carried.rotation.x = Math.sin(M.wobble * 9) * 0.09 * M.wobble;
 
       /* ----- deliver ----- */
+      // the hearth rack always comes first; the pile outside takes only what cannot fit indoors
       const dPile = Math.hypot(hunter.x - W.pile.x, hunter.z - W.pile.z);
-      const dStore = Math.hypot(hunter.x - TUNE.store.x, hunter.z - TUNE.store.z);
-      const pileFly = M.flyLogs.filter(l => l.visible && l.userData.kind === 'pile').length;
-      const storeFly = M.flyLogs.filter(l => l.visible && l.userData.kind === 'store').length;
-      const room = ctx.TUNE.logs - st.logs - st.restock.length - pileFly - (M.held ? 1 : 0);
-      const storeRoom = TUNE.storeMax - M.store - storeFly;
+      const dYard = Math.hypot(hunter.x - W.yardPile.x, hunter.z - W.yardPile.z);
+      // room on the rack for the Hunter's wood: what the Keeper is already carrying in keeps its place,
+      // so her armful always fits and she is never left holding logs
+      const room = M.rackRoom(ctx) - M.arms - M.airborne('arms') - (M.fetch ? M.fetch.left : 0);
       const D = M.deliver;
       if (!D && M.carry > 0 && st.started) {
-        // the Hunter can also drop wood on the outdoor stack: automatically when the indoor pile is full, or with the action button
-        let dest = null;
-        if (dPile < TUNE.deliverReach && room > 0 && st.throwT < 0) dest = 'pile';
-        else if (dStore < TUNE.deliverReach && storeRoom > 0 && (room <= 0 || H.act)) {
-          dest = 'store';
-          if (H.act) H.act = false;
-        }
-        if (dest) {
-          M.deliver = { phase: 'wind', t: 0, idx: M.carry - 1, dest };
+        if (dPile < TUNE.deliverReach && room > 0 && st.throwT < 0) {
+          M.deliver = { phase: 'wind', t: 0, idx: M.carry - 1, dest: 'rack' };
+          M.carried.children[M.deliver.idx].userData.winding = true;
+        } else if (dYard < TUNE.yardReach && M.carry - Math.max(0, room) > 0 && M.yardRoom() > 0) {
+          // wood that does not fit on the rack goes to the pile outside; wood that fits nowhere stays on the Hunter's back
+          M.deliver = { phase: 'wind', t: 0, idx: M.carry - 1, dest: 'yard' };
           M.carried.children[M.deliver.idx].userData.winding = true;
         }
       }
@@ -320,7 +322,7 @@
             // leaves the back
             M.carried.updateWorldMatrix(true, false);
             log.getWorldPosition(tmp);
-            M.launch(ctx, d.dest, tmp);
+            M.launch(ctx, tmp, d.dest, 'hunter');
             log.userData.winding = false; log.visible = false;
             M.setCarry(M.carry - 1, false);
             M.carried.children.forEach((c, i) => { if (i >= M.carry) c.userData.pop = 0; });
@@ -332,79 +334,56 @@
           if (d.t >= 1) M.deliver = null;
         }
       }
+      M.updateKeeper(ctx, dt);
+      if (M.flyLogs.some(l => l.visible && l.userData.dest === 'arms')) keeper.root.updateMatrixWorld(true);
       for (const l of M.flyLogs) {
         if (!l.visible) continue;
         const u = l.userData;
-        u.t += dt / TUNE.flyS;
+        const toArms = u.dest === 'arms';
+        u.t += dt / (toArms ? TUNE.fetchFlyS : TUNE.flyS);
         const k = clamp(u.t, 0, 1), e = HH.easeInOut(k);
-        if (u.kind === 'hand') { M.heldLog.updateWorldMatrix(true, false); M.heldLog.getWorldPosition(u.to); }   // the Keeper keeps walking
-        const to = u.to, h = u.height !== undefined ? u.height : TUNE.flyHeight;
+        if (toArms) M.armsG.children[u.slot].getWorldPosition(u.to);   // the Keeper keeps walking: aim at the spot in the arms
+        const to = u.to, h = toArms ? TUNE.fetchHeight : TUNE.flyHeight;
         l.position.set(HH.lerp(u.from.x, to.x, e), HH.lerp(u.from.y, to.y, e) + Math.sin(k * Math.PI) * h, HH.lerp(u.from.z, to.z, e));
         l.rotation.set(k * u.spin, k * 3, k * 2);
-        l.scale.setScalar(HH.lerp(1, u.endScale, k));
+        l.scale.setScalar(HH.lerp(u.startScale, u.endScale, k));
         if (u.t >= 1) {
           l.visible = false;
-          if (u.kind === 'pile') {
+          const byKeeper = u.src === 'keeper';
+          if (toArms) {
+            M.setArms(M.arms + 1, true);
+            ctx.sparks(to.x, to.y, to.z, 5, { speed: 0.7, up: 1.2, size: 0.05, life: 0.6 });
+            if (!M.fetch && !M.flyLogs.some(o => o.visible && o.userData.dest === 'arms')) keeper.hop = Math.max(keeper.hop, 0.6);   // the last one lands
+          } else if (u.dest === 'yard') {
+            if (M.yard >= TUNE.yardMax) M.setCarry(M.carry + 1, true);   // pile outside was full after all
+            else {
+              M.setYard(M.yard + 1, true);
+              ctx.sparks(to.x, 0.5, to.z, 14, { speed: 1.1, up: 2.0, size: 0.07, life: 0.9 });
+              hunter.hop = Math.max(hunter.hop, 0.5);
+            }
+          } else {
             const got = ctx.addLogs(1);
-            if (got < 1) { if (u.from2 === 'keeper') M.setHeld(true); else M.setCarry(M.carry + 1, true); }   // pile was full after all
+            if (got < 1) { if (byKeeper) M.setArms(M.arms + 1, true); else M.setCarry(M.carry + 1, true); }   // rack was full after all
             else {
               ctx.sparks(to.x, 0.5, to.z, 14, { speed: 1.1, up: 2.0, size: 0.07, life: 0.9 });
               ctx.pulseHud();
-              if (keeper.act <= 0) keeper.playAct('cheer');
-              if (u.from2 !== 'keeper') hunter.hop = Math.max(hunter.hop, 0.5);
+              if (!byKeeper) {
+                if (keeper.act <= 0) keeper.playAct('cheer');
+                hunter.hop = Math.max(hunter.hop, 0.5);
+              }
             }
-          } else if (u.kind === 'store') {
-            M.store = Math.min(TUNE.storeMax, M.store + 1);
-            M.popStore(M.store - 1);
-            ctx.sparks(to.x, to.y, to.z, 10, { speed: 1.0, up: 1.6, size: 0.06, life: 0.8 });
-            if (u.from2 !== 'keeper') hunter.hop = Math.max(hunter.hop, 0.5);
-          } else if (u.kind === 'hand') {
-            M.setHeld(true);
-            keeper.hop = Math.max(keeper.hop, 0.6);
-            ctx.sparks(to.x, to.y, to.z, 8, { speed: 0.9, up: 1.4, size: 0.055, life: 0.7 });
           }
         }
       }
 
-      /* ----- the outdoor stack: the Keeper takes a log from it, carries it in, and it goes on the indoor pile ----- */
-      for (let i = 0; i < M.storeLogs.length; i++) {
-        const l = M.storeLogs[i];
-        if (i < M.store) {
-          l.userData.popT = Math.min(1, (l.userData.popT === undefined ? 1 : l.userData.popT) + dt / 0.34);
-          l.visible = true;
-          l.scale.setScalar(Math.max(0.001, HH.easeOutBack(l.userData.popT)));
-        } else l.visible = false;
+      /* ----- the logs on the pile outside pop in as they land ----- */
+      for (let i = 0; i < W.yardLogs.length; i++) {
+        const l = W.yardLogs[i];
+        l.visible = i < M.yard;
+        if (!l.visible || l.userData.pop >= 1) continue;
+        l.userData.pop = Math.min(1, l.userData.pop + dt / 0.34);
+        l.scale.setScalar(Math.max(0.001, HH.easeOutBack(l.userData.pop)));
       }
-      const dKeepStore = Math.hypot(keeper.x - TUNE.store.x, keeper.z - TUNE.store.z);
-      const canTake = M.store > 0 && !M.held && !M.takeBusy && room > 0 && st.started;
-      const inReachK = dKeepStore < TUNE.keeperReach;
-      if (canTake && inReachK && ctx.input.keeper.act) {
-        ctx.input.keeper.act = false;
-        keeper.playAct('throw');
-        M.takeBusy = true; M.takeT = 0;
-      }
-      if (M.takeBusy) {
-        M.takeT += dt;
-        if (M.takeT > 0.2) {
-          M.takeBusy = false;
-          M.store--;
-          const l = M.storeLogs[M.store];
-          l.visible = false;
-          tmp.copy(l.position);
-          M.launch(ctx, 'hand', tmp);
-        }
-      }
-      if (M.held) {
-        M.heldPop = Math.min(1, M.heldPop + dt / 0.3);
-        M.heldLog.scale.setScalar(Math.max(0.001, HH.easeOutBack(M.heldPop)));
-        M.heldLog.visible = true;
-        if (Math.hypot(keeper.x - W.pile.x, keeper.z - W.pile.z) < TUNE.keeperDeliverReach && st.throwT < 0 && ctx.TUNE.logs - st.logs - st.restock.length - pileFly > 0) {
-          M.heldLog.updateWorldMatrix(true, false);
-          M.heldLog.getWorldPosition(tmp);
-          M.setHeld(false);
-          M.launch(ctx, 'pile', tmp, 'keeper');
-        }
-      } else M.heldLog.visible = false;
 
       /* ----- regrow after a homecoming ----- */
       for (let i = M.regrow.length - 1; i >= 0; i--) {
@@ -425,11 +404,6 @@
       const target = (near && slotsFree > 0 && st.started) ? near : null;
       if (target) M.promptAt = target;
       M.promptK = HH.damp(M.promptK, target ? 1 : 0, 12, dt);
-      // and an E over the outdoor stack when the Keeper can take a log from it
-      M.storeK = HH.damp(M.storeK, canTake && inReachK ? 1 : 0, 12, dt);
-      M.storePrompt.visible = M.storeK > 0.02;
-      M.storePrompt.scale.setScalar(0.5 * HH.easeOutBack(clamp(M.storeK, 0, 1)));
-      M.storePrompt.position.set(TUNE.store.x, 0.85 + M.store * 0.06 + Math.sin(t * 3) * 0.04, TUNE.store.z);
       const pa = M.promptAt;
       M.prompt.visible = !!pa && M.promptK > 0.02;
       if (pa) {
@@ -440,30 +414,137 @@
 
     flyBusy(ctx) { return M.flyLogs.some(l => l.visible); },
 
-    /* send a log flying: 'pile' to the indoor pile, 'store' to the outdoor stack, 'hand' onto the Keeper's shoulder */
-    launch(ctx, kind, from, who) {
+    /* how many logs the hearth rack can still take, counting the ones already in the air towards it */
+    rackRoom(ctx) {
+      const { st } = ctx;
+      return ctx.TUNE.pileMax - st.logs - st.restock.length - M.flyLogs.filter(l => l.visible && l.userData.dest === 'rack').length;
+    },
+    yardRoom() {
+      return TUNE.yardMax - M.yard - M.flyLogs.filter(l => l.visible && l.userData.dest === 'yard').length;
+    },
+    airborne(dest) { return M.flyLogs.filter(l => l.visible && l.userData.dest === dest).length; },
+
+    /* the pile outside holds n logs (pop: the newest one lands with a pop) */
+    setYard(n, pop) {
+      const W = M.ctx.W, was = M.yard;
+      M.yard = M.ctx.st.yard = clamp(n, 0, TUNE.yardMax);
+      for (let i = was; i < M.yard; i++) {
+        const l = W.yardLogs[i];
+        l.userData.pop = pop ? 0 : 1;
+        l.scale.setScalar(pop ? 0.001 : 1);
+      }
+      W.yardLogs.forEach((l, i) => { l.visible = i < M.yard; });
+    },
+
+    /* the Keeper holds n logs in her arms */
+    setArms(n, pop) {
+      const was = M.arms;
+      M.arms = clamp(n, 0, ARMS.length);
+      M.armsG.children.forEach((l, i) => {
+        if (i < M.arms && i >= was) { l.userData.pop = pop ? 0.001 : 1; l.userData.popT = pop ? 0 : 1; }
+        l.visible = i < M.arms && l.userData.pop > 0.02;
+      });
+    },
+
+    /* the Keeper: fetch an armful from the pile outside, carry it, throw it onto the rack by the hearth */
+    updateKeeper(ctx, dt) {
+      const { W, keeper, st } = ctx;
+      const K = ctx.input.keeper, t = st.time;
+      const tmp = M._tmpK || (M._tmpK = new ctx.T.Vector3());
+      const room = M.rackRoom(ctx);
+      const dYard = Math.hypot(keeper.x - W.yardPile.x, keeper.z - W.yardPile.z);
+      const dRack = Math.hypot(keeper.x - W.pile.x, keeper.z - W.pile.z);
+      const incoming = M.airborne('arms');
+
+      /* ----- fetch ----- */
+      const can = st.started && M.arms === 0 && !M.fetch && incoming === 0 && !M.kDeliver && M.yard > 0 && room > 0 && dYard < TUNE.yardReach;
+      if (can && K.act) {
+        K.act = false;                        // claimed: nothing else happens on this press
+        M.fetch = { left: Math.min(TUNE.armful, M.yard, room), gap: 0 };
+      }
+      if (M.fetch) {
+        const f = M.fetch;
+        f.gap -= dt;
+        if (f.gap <= 0 && f.left > 0 && M.flyLogs.some(l => !l.visible)) {
+          const slot = M.arms + M.airborne('arms');
+          M.setYard(M.yard - 1, false);       // the log leaves the pile and hops into the arms
+          M.yardLaunch(ctx, W.yardSlots[M.yard], slot);
+          f.left--; f.gap = TUNE.fetchGapS;
+        }
+        if (f.left <= 0) M.fetch = null;
+      }
+
+      /* ----- the arms: pop-in, then the carry pose ----- */
+      for (let i = 0; i < M.armsG.children.length; i++) {
+        const l = M.armsG.children[i], u = l.userData;
+        if (u.winding) continue;
+        if (i < M.arms) {
+          if (u.pop < 1) { u.popT = (u.popT || 0) + dt / 0.3; u.pop = HH.easeOutBack(clamp(u.popT, 0, 1)); }
+          l.scale.setScalar(Math.max(0.001, u.pop));
+          l.visible = true;
+        } else l.visible = false;
+      }
+      keeper.carry = (M.arms > 0 || M.fetch || incoming > 0) ? 1 : 0;
+
+      /* ----- deliver to the rack by the hearth, one log after another like the Hunter ----- */
+      if (!M.kDeliver && M.arms > 0 && !M.fetch && incoming === 0 && st.started && dRack < TUNE.deliverReach && room > 0 && st.throwT < 0) {
+        M.kDeliver = { phase: 'wind', t: 0, idx: M.arms - 1 };
+        M.armsG.children[M.kDeliver.idx].userData.winding = true;
+      }
+      if (M.kDeliver) {
+        const d = M.kDeliver, log = M.armsG.children[d.idx];
+        if (d.phase === 'wind') {
+          d.t += dt / TUNE.windS;
+          const k = clamp(d.t, 0, 1);
+          log.scale.setScalar(1 + 0.22 * Math.sin(k * Math.PI * 0.5));
+          log.position.y = log.userData.home.y + 0.04 * k;
+          if (d.t >= 1) {
+            M.armsG.updateWorldMatrix(true, false);
+            log.getWorldPosition(tmp);
+            M.launch(ctx, tmp, 'rack', 'keeper');
+            log.userData.winding = false; log.visible = false; log.position.y = log.userData.home.y; log.scale.setScalar(1);
+            M.setArms(M.arms - 1, false);
+            M.armsG.children.forEach((c, i) => { if (i >= M.arms) c.userData.pop = 0; });
+            d.phase = 'gap'; d.t = 0;
+          }
+        } else if (d.phase === 'gap') {
+          d.t += dt / TUNE.flyGapS;
+          if (d.t >= 1) M.kDeliver = null;
+        }
+      }
+
+      /* ----- the key prompt over the pile outside ----- */
+      M.yardPromptK = HH.damp(M.yardPromptK, can ? 1 : 0, 12, dt);
+      const yp = M.yardPrompt;
+      yp.visible = M.yardPromptK > 0.02;
+      yp.scale.setScalar(0.55 * HH.easeOutBack(clamp(M.yardPromptK, 0, 1)));
+      yp.position.set(W.yardPile.x, TUNE.yardPromptHeight + Math.sin(t * 3) * 0.04, W.yardPile.z);
+    },
+
+    /* send a log flying from the Hunter's back (or the Keeper's arms) to the rack by the hearth or the pile outside */
+    launch(ctx, from, dest, src) {
       const { st, W } = ctx;
       const fl = M.flyLogs.find(l => !l.visible);
       if (!fl) return;
-      const T = M.T, to = new T.Vector3();
-      let endScale = 0.55, height = TUNE.flyHeight;
-      if (kind === 'pile') {
-        const n = M.flyLogs.filter(l => l.visible && l.userData.kind === 'pile').length;
-        const slot = Math.min(ctx.TUNE.logs - 1, st.logs + st.restock.length + n);
+      const to = new M.T.Vector3();
+      if (dest === 'yard') {
+        const slot = Math.min(TUNE.yardMax - 1, M.yard + M.airborne('yard'));
+        to.copy(W.yardSlots[slot]); to.y += 0.35;
+      } else {
+        const slot = Math.min(ctx.TUNE.pileMax - 1, st.logs + st.restock.length + M.airborne('rack'));
         to.copy(W.logSlots[slot]); to.y += 0.35;
-      } else if (kind === 'store') {
-        const n = M.flyLogs.filter(l => l.visible && l.userData.kind === 'store').length;
-        to.copy(M.storeSlots[Math.min(TUNE.storeMax - 1, M.store + n)]); to.y += 0.2;
-      } else { height = 0.8; endScale = 0.8; M.heldLog.updateWorldMatrix(true, false); M.heldLog.getWorldPosition(to); }
-      fl.userData = { kind, from: from.clone(), to, t: 0, spin: 4 + Math.random() * 2, endScale, height, from2: who || 'hunter' };
-      fl.visible = true; fl.position.copy(from); fl.scale.setScalar(1);
+      }
+      fl.userData = { from: from.clone(), to, t: 0, spin: 4 + Math.random() * 2, startScale: src === 'keeper' ? 0.7 : 1, endScale: 0.55, dest, src };
+      fl.visible = true; fl.position.copy(from); fl.scale.setScalar(fl.userData.startScale);
     },
-    setHeld(b) {
-      if (b && !M.held) M.heldPop = 0;
-      M.held = b;
-      M.heldLog.visible = b;
+
+    /* a log hops from the pile outside into the Keeper's arms */
+    yardLaunch(ctx, from, slot) {
+      const fl = M.flyLogs.find(l => !l.visible);
+      if (!fl) return;
+      fl.userData = { from: from.clone(), to: new M.T.Vector3(), t: 0, spin: 1.5 + Math.random(), startScale: 1.5, endScale: 0.7, dest: 'arms', src: 'yard', slot };
+      fl.visible = true; fl.position.copy(from); fl.scale.setScalar(1.5);
     },
-    popStore(i) { const l = M.storeLogs[i]; if (l) l.userData.popT = 0; },
 
     on(event, data, ctx) {
       if (event === 'homecoming') {
@@ -476,10 +557,10 @@
 
     attachDebug(ctx) {
       window.game.debug.wood = {
-        store(n) { M.store = clamp(n, 0, TUNE.storeMax); M.storeLogs.forEach(l => { l.userData.popT = 1; }); return this; },
         give(n) { M.setCarry(M.carry + (n === undefined ? 1 : n), true); return this; },
+        yard(n) { M.setYard(n, false); return this; },   // set how many logs lie on the pile outside
         state() {
-          return { store: M.store, held: M.held, carry: M.carry, bundles: M.bundles.filter(b => b.state === 'ready' || b.state === 'grow').length, gathered: M.gathered,
+          return { carry: M.carry, yard: M.yard, arms: M.arms, bundles: M.bundles.filter(b => b.state === 'ready' || b.state === 'grow').length, gathered: M.gathered,
             pile: ctx.st.logs + ctx.st.restock.length, spots: M.spots.length, regrowing: M.regrow.length,
             at: M.bundles.map(b => ({ x: +b.spot.x.toFixed(1), z: +b.spot.z.toFixed(1), s: b.state })) };
         }

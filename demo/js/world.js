@@ -14,6 +14,7 @@
   W.fire = new T.Vector3(HX, 0.14, C.z0 + 0.68);
   W.hearthFront = { x: HX, z: C.z0 + 1.75 };
   W.pile = { x: HX - 2.0, z: C.z0 + 0.48 };
+  W.yardPile = { x: 3.7, z: -5.3 };    // the overflow stack of split wood outside, by the chopping block
   W.chimneyTop = new T.Vector3(HX, 4.62, C.z0 + 0.12);
   W.waystone = HH.uv2w(78.6, 0.9);
 
@@ -137,9 +138,9 @@
     }
   }
 
-  function makeLog(len, rad) {
+  function makeLog(len, rad, seed) {
     const k = new HH.Kit();
-    const bark = HH.faceShade(P.woodD, 0.05, 7);
+    const bark = HH.faceShade(P.woodD, 0.05, seed || 7);
     k.cyl(rad, rad, len, 8, 0, 0, 0, bark, { rx: Math.PI / 2 });
     k.cyl(rad * 0.86, rad * 0.86, 0.02, 8, 0, 0, len / 2 + 0.004, HH.col(P.tan), { rx: Math.PI / 2 });
     k.cyl(rad * 0.86, rad * 0.86, 0.02, 8, 0, 0, -len / 2 - 0.004, HH.col(P.tan), { rx: Math.PI / 2 });
@@ -327,8 +328,8 @@
     const px = W.pile.x, pz = W.pile.z;
     [pz - 0.28, pz + 0.28].forEach(z => {
       k.box(1.18, 0.07, 0.08, px, 0.035, z, HH.col(P.woodD), { r: 0.02 });
-      k.box(0.08, 0.66, 0.08, px - 0.55, 0.33, z, HH.col(P.woodD), { r: 0.02 });
-      k.box(0.08, 0.66, 0.08, px + 0.55, 0.33, z, HH.col(P.woodD), { r: 0.02 });
+      k.box(0.08, 1.2, 0.08, px - 0.55, 0.6, z, HH.col(P.woodD), { r: 0.02 });   // tall enough for four rows
+      k.box(0.08, 1.2, 0.08, px + 0.55, 0.6, z, HH.col(P.woodD), { r: 0.02 });
     });
     addBox(px - 0.6, px + 0.6, C.z0, pz + 0.42);
 
@@ -516,11 +517,8 @@
     k.box(0.06, 0.62, 0.06, cb.x + 0.05, 0.7, cb.z, HH.col(P.woodL), { rz: -0.5, r: 0.02 });
     k.box(0.07, 0.2, 0.26, cb.x - 0.08, 0.5, cb.z, HH.col(P.stoneL), { rz: -0.5, r: 0.02 });
     addCircle(cb.x, cb.z, 0.36);
-    for (let r = 0; r < 3; r++) for (let i = 0; i < 4 - r; i++) {
-      const x = 3.25 + r * 0.15 + i * 0.3, y = 0.15 + r * 0.26, z = -5.3;
-      k.cyl(0.14, 0.14, 0.8, 7, x, y, z, HH.faceShade(P.woodD, 0.05, 80 + i + r * 5), { rx: Math.PI / 2, ry: 0.5 });
-      k.cyl(0.12, 0.12, 0.02, 7, x + 0.19, y, z + 0.35, HH.col(P.tan), { rx: Math.PI / 2, ry: 0.5 });
-    }
+    // two low bearer rails under the stack (the split logs themselves are separate, see W.build)
+    [-0.24, 0.24].forEach(dz => k.box(1.5, 0.08, 0.1, W.yardPile.x, 0.04, W.yardPile.z + dz, HH.col(P.woodD), { r: 0.02 }));
     addSeg(3.1, -5.1, 4.3, -5.5, 0.4);
     return k.build();
   }
@@ -717,8 +715,14 @@
     const roof = buildRoof();
     scene.add(roof);
     W.roof = roof;
-    // the wood pile: five real logs
-    W.logSlots = [[-0.31, 0.2], [0, 0.2], [0.31, 0.2], [-0.155, 0.47], [0.155, 0.47]].map(s => new T.Vector3(W.pile.x + s[0], s[1], W.pile.z));
+    // the wood pile: ten real logs in rows of three, two, three and two (the game shows as many as it holds)
+    W.logSlots = [[-0.31, 0.2], [0, 0.2], [0.31, 0.2], [-0.155, 0.47], [0.155, 0.47],
+      [-0.31, 0.74], [0, 0.74], [0.31, 0.74], [-0.155, 1.01], [0.155, 1.01]].map(s => new T.Vector3(W.pile.x + s[0], s[1], W.pile.z));
     W.logs = W.logSlots.map((s, i) => { const m = makeLog(0.72, 0.145); m.position.copy(s); m.rotation.z = i * 1.3; scene.add(m); return m; });
+    // the stack of split wood outside: ten real logs in rows of four, three, two and one, lying on the bearer rails
+    // (the game shows as many as it holds; the logs keep the angle the old fixed stack had)
+    W.yardSlots = [];
+    [4, 3, 2, 1].forEach((n, r) => { for (let i = 0; i < n; i++) W.yardSlots.push(new T.Vector3(3.25 + r * 0.15 + i * 0.3, 0.23 + r * 0.26, W.yardPile.z)); });
+    W.yardLogs = W.yardSlots.map((s, i) => { const m = makeLog(0.8, 0.14, 80 + i + Math.floor(i / 4) * 2); m.position.copy(s); m.rotation.y = 0.5; scene.add(m); return m; });
   };
 })();

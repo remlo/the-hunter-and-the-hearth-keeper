@@ -200,6 +200,7 @@
       kind, root, rig, torso, head, eyes, legL, legR, armL, armR, lantern,
       x: 0, z: 0, vx: 0, vz: 0, facing: 0, speed01: 0, phase: 0, t: Math.random() * 10,
       blink: 2 + Math.random() * 3, act: 0, actKind: '', hop: 0,
+      carry: 0, carryK: 0,    // carry: 1 holds both arms out in front as if hugging a bundle (a mechanic sets it); carryK is the eased value
       lanternWorld: new T.Vector3()
     };
 
@@ -240,6 +241,13 @@
       // arms
       let aL = -sw * 0.75 * s + breathe * 0.03, aR = sw * 0.75 * s - breathe * 0.03, aLz = -0.06, aRz = 0.06;
       if (hunter) { aR = -0.82 + sw * 0.07 * s + breathe * 0.02; aRz = 0.16; }
+      // carrying: both arms come forward and in, the walk swing nearly stops
+      c.carryK = damp(c.carryK, c.carry, 9, dt);
+      if (c.carryK > 0.001) {
+        const ck = c.carryK, hold = -1.3 + sw * 0.05 * s + breathe * 0.015;
+        aL = lerp(aL, hold, ck); aR = lerp(aR, hold, ck);
+        aLz = lerp(aLz, 0.45, ck); aRz = lerp(aRz, -0.45, ck);
+      }
       if (c.act > 0) {
         c.act = Math.max(0, c.act - dt * (c.actKind === 'raise' ? 0.95 : 2.4));
         const k = Math.sin((1 - c.act) * Math.PI);

@@ -18,7 +18,8 @@
     flareSeconds: 20,          // a stoke: wider light, burn paused
     flareRadiusMult: 1.6,
     stokeGift: 0.12,           // a stoke also rekindles a dead lantern to this level
-    logs: 5,
+    logs: 5,                   // logs on the pile when the game starts
+    pileMax: 10,               // most the pile (and the rack) can hold
     stokeReach: 1.75,
     autoRestock: true          // the pile refills by itself when the Hunter comes home; a gathering mechanic turns this off
   };
@@ -46,7 +47,7 @@
     const smoke = HH.makeSmoke(W.chimneyTop);
     scene.add(smoke.group);
     const prompt = HH.makePrompt('E');
-    prompt.position.set(W.pile.x, 1.42, W.pile.z + 0.25);
+    prompt.position.set(W.pile.x, 1.78, W.pile.z + 0.25);
     prompt.visible = false;
     scene.add(prompt);
 
@@ -63,6 +64,7 @@
       canStoke: false, promptK: 0, restock: [], dim: 0.22,
       burnMult: 1                // mechanics scale the lantern's burn rate through this (below 1 burns slower)
     };
+    W.logs.forEach((l, i) => { l.visible = i < st.logs; });   // the rack starts with five, the other places empty
     const ringPos = new T.Vector3();
     const glass = hunter.lantern.userData.glass.material.color;
     const glassLit = HH.hdr(0xffb347, 2.1), glassOut = HH.col(0x2a2c33);
@@ -181,7 +183,7 @@
       view.pulseSeam(1);
       hunter.hop = 1;
       if (keeper.act <= 0) keeper.playAct('cheer');
-      st.owedWood = TUNE.autoRestock && st.logs < TUNE.logs;
+      st.owedWood = TUNE.autoRestock && st.logs < TUNE.pileMax;
       pulseHud();
       emit('homecoming', { tripMax: st.tripMax, awayT: st.awayT });
     }
@@ -197,7 +199,7 @@
     function emit(name, data) { for (const m of mechs) { if (m.on) m.on(name, data, ctx); } }
     // put up to n logs back on the pile with the usual pop-in; returns how many fitted
     function addLogs(n) {
-      const have = st.logs + st.restock.length, add = Math.max(0, Math.min(n, TUNE.logs - have));
+      const have = st.logs + st.restock.length, add = Math.max(0, Math.min(n, TUNE.pileMax - have));
       for (let k = 0; k < add; k++) st.restock.push({ i: have + k, t: -k * 0.14 - 0.15 });
       return add;
     }
@@ -224,11 +226,12 @@
       if (Math.abs(f - hudFuel) > 0.004) { hudFuel = f; lanternEl.style.setProperty('--fuel', f.toFixed(3)); }
       if (Math.abs(fl - hudFlare) > 0.004) { hudFlare = fl; lanternEl.style.setProperty('--flare', fl.toFixed(3)); }
       const empty = st.logs === 0 && st.throwT < 0 && st.restock.length === 0;
-      const cls = (f <= 0 ? 'out' : (f < TUNE.lanternLowAt && !st.home && st.flare <= 0 ? 'low' : 'ok')) + (st.flare > 0 ? ' flare' : '') + (st.canStoke ? ' stoke' : '') + (empty ? ' empty' : '');
+      const outside = (st.yard || 0) > 0;     // the wood mechanic keeps the count of logs on the pile outside
+      const cls = (f <= 0 ? 'out' : (f < TUNE.lanternLowAt && !st.home && st.flare <= 0 ? 'low' : 'ok')) + (st.flare > 0 ? ' flare' : '') + (st.canStoke ? ' stoke' : '') + (empty ? ' empty' : '') + (empty && outside ? ' outside' : '');
       if (cls !== hudCls) {
         hudCls = cls;
         keeperAct.classList.toggle('is-empty', empty);
-        keeperTxt.textContent = empty ? 'out of wood, the Hunter brings more home' : 'stoke the fire';
+        keeperTxt.textContent = empty ? (outside ? 'out of wood, fetch more from the pile outside' : 'out of wood, the Hunter brings more home') : 'stoke the fire';
         lanternEl.classList.toggle('is-out', f <= 0);
         lanternEl.classList.toggle('is-low', cls.indexOf('low') === 0);
         lanternEl.classList.toggle('is-flare', st.flare > 0);
@@ -311,7 +314,7 @@
       // wood comes home with the Hunter
       if (st.owedWood && st.throwT < 0 && Math.hypot(hunter.x - W.hearthFront.x, hunter.z - W.hearthFront.z) < 5.5) {
         st.owedWood = false;
-        for (let i = st.logs; i < TUNE.logs; i++) st.restock.push({ i, t: -(i - st.logs) * 0.14 - 0.15 });
+        for (let i = st.logs; i < TUNE.pileMax; i++) st.restock.push({ i, t: -(i - st.logs) * 0.14 - 0.15 });
       }
       for (let n = st.restock.length - 1; n >= 0; n--) {
         const r = st.restock[n], log = W.logs[r.i];
@@ -409,7 +412,7 @@
       st.promptK = damp(st.promptK, st.canStoke && st.started ? 1 : 0, 12, dt);
       prompt.visible = st.promptK > 0.02;
       prompt.scale.setScalar(0.62 * HH.easeOutBack(clamp(st.promptK, 0, 1)));
-      prompt.position.y = 1.42 + Math.sin(t * 3) * 0.04;
+      prompt.position.y = 1.78 + Math.sin(t * 3) * 0.04;
 
       // camera
       st.dim = damp(st.dim, st.started ? 0 : 0.22, 4, dt);
@@ -442,7 +445,7 @@
       face(n, a) { who(n).facing = a; return this; },
       setLantern(f) { st.fuel = clamp(f, 0, 1); return this; },
       setFlare(s) { st.flare = s; return this; },
-      setLogs(n) { st.logs = clamp(n, 0, TUNE.logs); W.logs.forEach((l, i) => { l.visible = i < st.logs; l.position.copy(W.logSlots[i]); l.scale.setScalar(1); }); return this; },
+      setLogs(n) { st.logs = clamp(n, 0, TUNE.pileMax); W.logs.forEach((l, i) => { l.visible = i < st.logs; l.position.copy(W.logSlots[i]); l.scale.setScalar(1); }); return this; },
       stoke() { if (st.logs > 0 && st.throwT < 0) { st.throwLog = W.logs[st.logs - 1]; st.throwFrom.copy(st.throwLog.position); st.throwT = 0; st.logs -= 1; keeper.playAct('throw'); } return this; },
       raise() { hunter.playAct('raise'); st.raise = 1; st.flutter = 1; return this; },
       homecoming() { homecoming(); return this; },
