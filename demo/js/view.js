@@ -115,7 +115,47 @@
     renderer.toneMapping = T.NoToneMapping;
     renderer.setClearColor(HH.U.uVoidCol.value, 1);
     const gl2 = renderer.capabilities.isWebGL2;
-    const texType = gl2 ? T.HalfFloatType : T.UnsignedByteType;
+    const gl = renderer.getContext();
+
+    /* Phones differ in what they can draw into, so ask the GPU before building the render targets.
+       The scene wants half-float colour (light brighter than white, for the bloom) and four-times multisampling.
+       Many phones can do the first only after an extension is switched on, which three.js r147 does not do
+       by itself, and some cannot multisample it at all. Drawing into a target the GPU rejects gives a black screen. */
+    function canDrawInto(samples) {
+      if (!gl2) return false;
+      try {
+        gl.getExtension('EXT_color_buffer_float');
+        gl.getExtension('EXT_color_buffer_half_float');
+        while (gl.getError() !== gl.NO_ERROR) { /* clear old errors */ }
+        const fb = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+        let tex = null, rb = null;
+        if (samples > 0) {
+          rb = gl.createRenderbuffer();
+          gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+          gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.RGBA16F, 8, 8);
+          gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rb);
+        } else {
+          tex = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, 8, 8, 0, gl.RGBA, gl.HALF_FLOAT, null);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+        }
+        const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE && gl.getError() === gl.NO_ERROR;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.deleteFramebuffer(fb);
+        if (tex) gl.deleteTexture(tex);
+        if (rb) gl.deleteRenderbuffer(rb);
+        return ok;
+      } catch (e) { return false; }
+    }
+    const want = String(location.hash);   // #ldr and #nomsaa force the fallbacks, to test them on a desktop
+    const hdr = canDrawInto(0) && want.indexOf('ldr') < 0;
+    const SAMPLES = want.indexOf('nomsaa') >= 0 ? 0 : (hdr ? (canDrawInto(4) ? 4 : 0) : (gl2 ? 4 : 0));
+    renderer.resetState();
+    const texType = hdr ? T.HalfFloatType : T.UnsignedByteType;
+    let gpu = '';
+    try { const dbg = gl.getExtension('WEBGL_debug_renderer_info'); gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : ''; } catch (e) { /* not exposed */ }
 
     /* camera basis: fixed elevated orthographic view, 45 degrees round, 42 degrees up */
     const ELEV = 42 * Math.PI / 180, ce = Math.cos(ELEV), se = Math.sin(ELEV);
@@ -153,8 +193,8 @@
     /* render targets */
     let W = 2, H = 2, scale = 1;
     const rtOpts = (samples) => ({ type: texType, minFilter: T.LinearFilter, magFilter: T.LinearFilter, generateMipmaps: false, depthBuffer: samples !== undefined, samples: samples || 0 });
-    const rtA = new T.WebGLRenderTarget(2, 2, rtOpts(gl2 ? 4 : 0));
-    const rtB = new T.WebGLRenderTarget(2, 2, rtOpts(gl2 ? 4 : 0));
+    const rtA = new T.WebGLRenderTarget(2, 2, rtOpts(SAMPLES));
+    const rtB = new T.WebGLRenderTarget(2, 2, rtOpts(SAMPLES));
     const rtC = new T.WebGLRenderTarget(2, 2, rtOpts());
     const LEVELS = 4;
     const down = [], up = [];
@@ -182,8 +222,11 @@
       vFar: 15, nearScale: 0.76, homeScale: 1.28,
       q: 0, split: false, lineVis: 0, seam: 0, homeBlend: 1, V: 12, pxPerUnit: 60,
       onSplit: null, onMerge: null, particles: null,
-      solo: null, soloScale: 0.5, soloGlide: 7   // solo: 'A' (keeper) or 'B' (hunter) for one view that follows that player; soloScale is its zoom (smaller is closer)
+      solo: null, soloScale: 0.5, soloGlide: 7,  // solo: 'A' (keeper) or 'B' (hunter) for one view that follows that player; soloScale is its zoom (smaller is closer)
+      caps: { webgl2: gl2, hdr, samples: SAMPLES, gpu }   // what this device's GPU agreed to; shown by #info
     };
+    // without half-float colour nothing is brighter than white, so let the bloom start lower and lift the picture a little
+    if (!hdr) { mPre.uniforms.uThreshold.value = 0.82; mFinal.uniforms.uExposure.value = 1.18; }
 
     const sA = { x: 0, z: 0 }, sB = { x: 0, z: 0 }, sS = { x: 0, y: 0 };
     let soloOn = false;
