@@ -477,18 +477,23 @@
     k.box(gx1 - gx0 + 0.16, 0.22, 0.1, gcx, 0.11, gz1 + 0.05, HH.col(P.woodD), { r: 0.02 });
     k.box(0.1, 0.22, gz1 - gz0, gx0 - 0.05, 0.11, gcz, HH.col(P.woodD), { r: 0.02 });
     k.box(0.1, 0.22, gz1 - gz0, gx1 + 0.05, 0.11, gcz, HH.col(P.woodD), { r: 0.02 });
+    // the last plant of the first three rows (the open +x end) is left out: bare soil for the Keeper's plots
+    // (the random numbers it would have used are still drawn, so everything after it looks as before)
     for (let i = 0; i < 6; i++) { // carrots
       const x = gx0 + 0.42 + i * 0.47, z = gz0 + 0.38;
+      if (i === 5) { rnd(); rnd(); rnd(); continue; }
       for (let j = 0; j < 3; j++) k.cone(0.05, 0.3, 4, x + (j - 1) * 0.05, 0.36, z, HH.col(P.leafL), { leaf: true, rz: (j - 1) * 0.35, rx: (rnd() - 0.5) * 0.4, sway: 0.5 });
       k.cyl(0.055, 0.04, 0.07, 6, x, 0.21, z, HH.col(P.autumn));
     }
     for (let i = 0; i < 5; i++) { // cabbages
       const x = gx0 + 0.5 + i * 0.55, z = gz0 + 0.86;
+      if (i === 4) { rnd(); rnd(); continue; }
       k.ico(0.2, x, 0.3, z, HH.faceShade(P.leaf, 0.06, 40 + i), { s: [1, 0.72, 1], ry: rnd() * 3 });
       k.ico(0.12, x, 0.39, z, HH.col(P.leafL), { s: [1, 0.7, 1], ry: rnd() * 3 });
     }
     for (let i = 0; i < 7; i++) { // sprouts
       const x = gx0 + 0.36 + i * 0.41, z = gz0 + 1.34;
+      if (i === 6) continue;
       k.box(0.03, 0.16, 0.03, x, 0.27, z, HH.col(P.leaf), { leaf: true, sway: 0.3 });
       k.box(0.13, 0.03, 0.07, x + 0.06, 0.35, z, HH.col(P.leafL), { leaf: true, rz: 0.5, sway: 0.5, r: 0.012 });
       k.box(0.13, 0.03, 0.07, x - 0.06, 0.35, z, HH.col(P.leafL), { leaf: true, rz: -0.5, sway: 0.5, r: 0.012 });
@@ -501,6 +506,8 @@
       k.ico(0.04, x - 0.08, 0.36, z + 0.1, HH.col(P.red), {});
     }
     addBox(gx0, gx1, gz0, gz1);
+    // where the Keeper's three plots are (on the soil rows at the open end) and where she stands to tend them
+    W.garden = { plots: [{ x: gx1 - 0.55, z: gz0 + 0.38 }, { x: gx1 - 0.55, z: gz0 + 0.86 }, { x: gx1 - 0.55, z: gz0 + 1.34 }], stand: { x: gx1 + 0.6, z: gz0 + 0.86 } };
     // garden fence, open towards the yard
     const fx0 = gx0 - 0.3, fx1 = gx1 + 0.3, fz0 = gz0 - 0.3, fz1 = gz1 + 0.3;
     const run = (ax, az, bx, bz, n) => { const pts = []; for (let i = 0; i <= n; i++) pts.push({ x: lerp(ax, bx, i / n), z: lerp(az, bz, i / n) }); return pts; };
@@ -588,6 +595,7 @@
       k.box(0.04 * s, 0.03, 0.04 * s, mx - 0.08 * s, 0.24 * s, mz + 0.03 * s, HH.col(P.white), { r: 0.01 });
     }
   }
+  W.drawMushrooms = mushrooms;     // for the pickable ones: draws a cluster into a Kit as the scenery once did
   function stump(k, x, z, rnd) {
     k.cyl(0.26, 0.33, 0.34, 7, x, 0.17, z, HH.faceShade(P.bark, 0.05, (rnd() * 999) | 0), { ry: rnd() * 3 });
     k.cyl(0.23, 0.23, 0.03, 7, x, 0.345, z, HH.col(P.tan), { ry: rnd() * 3 });
@@ -678,6 +686,11 @@
     }
     // things inside the walkable corridor, kept clear of the path itself
     const cr = HH.rng(202);
+    // the scenery mushrooms are not drawn (they are for the Hunter to pick), but they still draw their random
+    // numbers, so every prop after them stays exactly where it was; W.mushroomSpots says where they were
+    const noKit = { cyl() {}, cone() {}, box() {} };
+    W.mushroomSpots = [];
+    const wildMushrooms = (x, z) => { W.mushroomSpots.push({ x, z }); mushrooms(noKit, x, z, cr); };
     for (let u = 15; u < 78; u += 2.6) {
       const uu = u + (cr() - 0.5) * 1.6, side = cr() < 0.5 ? -1 : 1, pv = W.pathV(uu), hw = W.hw(uu);
       const off = side * lerp(1.7, hw - 0.3, cr()), vv = pv + off, w = HH.uv2w(uu, vv), k = kitFor(uu), pick = cr();
@@ -685,7 +698,7 @@
       else if (pick < 0.3 && side < 0) { pineTree(k, w.x, w.z, 4 + cr() * 1.5, cr); addCircle(w.x, w.z, 0.3); }
       else if (pick < 0.5) { const s = 0.36 + cr() * 0.3; rock(k, w.x, w.z, s, cr, true); addCircle(w.x, w.z, s * 0.8); }
       else if (pick < 0.64) { stump(k, w.x, w.z, cr); addCircle(w.x, w.z, 0.3); }
-      else if (pick < 0.82) mushrooms(k, w.x, w.z, cr);
+      else if (pick < 0.82) wildMushrooms(w.x, w.z);
       else bush(k, w.x, w.z, 0.7 + cr() * 0.3, cr, cr() < 0.4), addCircle(w.x, w.z, 0.36);
       for (let i = 0; i < 3; i++) {
         const tu = uu + (cr() - 0.5) * 2.6, tv = W.pathV(tu) + (cr() < 0.5 ? -1 : 1) * lerp(1.3, W.hw(tu), cr()), tw = HH.uv2w(tu, tv);
@@ -702,7 +715,7 @@
     k.box(0.05, 0.05, 0.03, 0, 0, 0, rune, { glow: true, r: 0, rz: Math.PI / 4 });
     k.pop();
     addCircle(ws.x, ws.z, 0.6);
-    mushrooms(k, ws.x - 1.2, ws.z + 0.9, cr);
+    wildMushrooms(ws.x - 1.2, ws.z + 0.9);
     Object.keys(chunks).forEach(i => scene.add(chunks[i].build()));
   }
 

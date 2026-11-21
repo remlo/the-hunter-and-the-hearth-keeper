@@ -200,6 +200,7 @@
       kind, root, rig, torso, head, eyes, legL, legR, armL, armR, lantern,
       x: 0, z: 0, vx: 0, vz: 0, facing: 0, speed01: 0, phase: 0, t: Math.random() * 10,
       blink: 2 + Math.random() * 3, act: 0, actKind: '', hop: 0,
+      sprint: 0, sprintK: 0,  // sprint: 1 leans the body into a run with a wider arm and leg swing (a mechanic sets it); sprintK is the eased value
       carry: 0, carryK: 0,    // carry: 1 holds both arms out in front as if hugging a bundle (a mechanic sets it); carryK is the eased value
       lanternWorld: new T.Vector3()
     };
@@ -218,7 +219,9 @@
         while (d < -Math.PI) d += Math.PI * 2;
         c.facing += d * (1 - Math.exp(-14 * dt));
       }
-      c.phase += dt * (6.5 + 5.5 * s) * s;
+      c.sprintK = damp(c.sprintK, c.sprint, 10, dt);
+      const sk = c.sprintK;
+      c.phase += dt * (6.5 + 5.5 * s) * s * (1 + 0.45 * sk);
       const sw = Math.sin(c.phase), bob = Math.abs(Math.cos(c.phase));
       const breathe = Math.sin(c.t * 2.1);
       root.position.set(c.x, 0, c.z);
@@ -226,21 +229,23 @@
       c.hop = Math.max(0, c.hop - dt * 3.2);
       const hopY = Math.sin((1 - c.hop) * Math.PI) * 0.16 * (c.hop > 0 ? 1 : 0);
       rig.position.y = bob * 0.055 * s + hopY;
-      rig.rotation.x = 0.11 * s;
+      rig.rotation.x = 0.11 * s + 0.2 * sk;
       rig.rotation.z = sw * 0.035 * s;
-      legL.rotation.x = sw * 0.8 * s;
-      legR.rotation.x = -sw * 0.8 * s;
+      legL.rotation.x = sw * (0.8 + 0.5 * sk) * s;
+      legR.rotation.x = -sw * (0.8 + 0.5 * sk) * s;
       torso.scale.y = 1 + breathe * 0.014 * (1 - s);
       head.position.y = 0.67 + breathe * 0.006 * (1 - s);
-      head.rotation.x = -0.05 * s + Math.sin(c.phase * 2) * 0.02 * s;
+      head.rotation.x = -0.05 * s - 0.12 * sk +Math.sin(c.phase * 2) * 0.02 * s;
       head.rotation.z = -sw * 0.03 * s;
       // blinking
       c.blink -= dt;
       if (c.blink < 0) c.blink = 2.4 + Math.random() * 3.2;
       eyes.scale.y = c.blink < 0.11 ? 0.12 : 1;
       // arms
-      let aL = -sw * 0.75 * s + breathe * 0.03, aR = sw * 0.75 * s - breathe * 0.03, aLz = -0.06, aRz = 0.06;
-      if (hunter) { aR = -0.82 + sw * 0.07 * s + breathe * 0.02; aRz = 0.16; }
+      const wide = 0.75 + 0.55 * sk;
+      let aL = -sw * wide * s + breathe * 0.03, aR = sw * wide * s - breathe * 0.03, aLz = -0.06, aRz = 0.06;
+      // the lantern arm stays forward holding the lantern, with a slightly bigger pump while sprinting
+      if (hunter) { aR = -0.82 - 0.12 * sk + sw * (0.07 + 0.2 * sk) * s + breathe * 0.02; aRz = 0.16; }
       // carrying: both arms come forward and in, the walk swing nearly stops
       c.carryK = damp(c.carryK, c.carry, 9, dt);
       if (c.carryK > 0.001) {

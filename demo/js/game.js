@@ -72,8 +72,9 @@
 
     /* ---------- input ---------- */
     const keys = {}, pressed = {};
-    const used = { KeyW: 1, KeyA: 1, KeyS: 1, KeyD: 1, KeyE: 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, Enter: 1, NumpadEnter: 1, ShiftRight: 1, Space: 1 };
+    const used = { KeyW: 1, KeyA: 1, KeyS: 1, KeyD: 1, KeyE: 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, Enter: 1, NumpadEnter: 1, ShiftRight: 1, ShiftLeft: 1, Numpad0: 1, Space: 1 };
     const padPrev = [false, false];
+    let padPrevSprint = false;
     const auto = { keeper: null, hunter: null };
 
     function begin() {
@@ -103,26 +104,29 @@
 
     function readInput(who) {
       const a = auto[who];
-      if (a) return { ix: a.ix, iy: a.iy, act: false };
-      if (ctx.freeze[who]) return { ix: 0, iy: 0, act: false };
-      if (!st.started) return { ix: 0, iy: 0, act: false };
+      if (a) return { ix: a.ix, iy: a.iy, act: false, sprint: false };
+      if (ctx.freeze[who]) { if (who === 'hunter') ctx.virtual.sprint = false; return { ix: 0, iy: 0, act: false, sprint: false }; }
+      if (!st.started) return { ix: 0, iy: 0, act: false, sprint: false };
       // playing alone: one character is active and takes every control; the other stands still
       if (ctx.solo) {
-        if (who !== ctx.solo) return { ix: 0, iy: 0, act: false };
+        if (who !== ctx.solo) return { ix: 0, iy: 0, act: false, sprint: false };
         let sx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), sy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-        let sact = !!(pressed.KeyE || pressed.Enter || pressed.NumpadEnter || pressed.ShiftRight);
+        let sact = !!(pressed.KeyE || pressed.Enter || pressed.NumpadEnter);
+        let ssp = !!(pressed.ShiftLeft || pressed.ShiftRight);
         const v = ctx.virtual;
         if (v.ix || v.iy) { sx = v.ix; sy = v.iy; }
         if (v.act) { sact = true; v.act = false; }
-        return { ix: sx, iy: sy, act: sact };
+        if (v.sprint) { ssp = true; v.sprint = false; }
+        return { ix: sx, iy: sy, act: sact, sprint: who === 'hunter' && ssp };
       }
-      let ix = 0, iy = 0, act = false;
+      let ix = 0, iy = 0, act = false, sprint = false;
       if (who === 'keeper') {
         ix = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0); iy = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
         act = !!pressed.KeyE;
       } else {
         ix = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0); iy = (keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0);
-        act = !!(pressed.Enter || pressed.NumpadEnter || pressed.ShiftRight);
+        act = !!(pressed.Enter || pressed.NumpadEnter);
+        sprint = !!(pressed.ShiftRight || pressed.Numpad0);
       }
       // gamepads: first pad is the Hearth Keeper, second is the Hunter
       const idx = who === 'keeper' ? 0 : 1, pad = readPads()[idx];
@@ -134,15 +138,21 @@
         const down = b(0) || b(2);
         if (down && !padPrev[idx]) act = true;
         padPrev[idx] = down;
+        if (who === 'hunter') {
+          const sd = b(1) || b(7);
+          if (sd && !padPrevSprint) sprint = true;
+          padPrevSprint = sd;
+        }
       }
-      return { ix, iy, act };
+      return { ix, iy, act, sprint };
     }
 
     function move(c, inp, dt) {
       let ix = inp.ix, iy = inp.iy;
       const len = Math.hypot(ix, iy);
       if (len > 1) { ix /= len; iy /= len; }
-      const tvx = S * (ix - iy) * TUNE.walkSpeed, tvz = -S * (ix + iy) * TUNE.walkSpeed;
+      const spd = TUNE.walkSpeed * (c === hunter ? ctx.speed.hunter : ctx.speed.keeper);
+      const tvx = S * (ix - iy) * spd, tvz = -S * (ix + iy) * spd;
       const k = 1 - Math.exp(-(len > 0.01 ? 13 : 17) * dt);
       c.vx += (tvx - c.vx) * k; c.vz += (tvz - c.vz) * k;
       const p = { x: c.x + c.vx * dt, z: c.z + c.vz * dt };
@@ -209,7 +219,8 @@
       T, HH, W, TUNE, st, scene, view, keeper, hunter, fire, particles: ps,
       input: { keeper: { ix: 0, iy: 0, act: false }, hunter: { ix: 0, iy: 0, act: false } },   // this step's input
       sparks, pulseHud, emit, addLogs,
-      freeze: { keeper: false, hunter: false },         // true: that character ignores all input (movement and action)
+      speed: { keeper: 1, hunter: 1 },                  // a mechanic can scale a character's walking speed (1 is normal)
+      freeze: { keeper: false, hunter: false },        // true: that character ignores all input (movement and action)
       // ask for a stoke as the Keeper's press would (wherever she stands); true if a log started its throw
       stoke() {
         if (st.logs > 0 && st.throwT < 0 && st.restock.length === 0) {
@@ -228,7 +239,7 @@
       // Playing alone (the touch mode uses this): set solo to 'keeper' or 'hunter' and that character takes all
       // input while the other stands still, and the camera follows it as one view with no split. Leave it null for two players.
       solo: null,
-      virtual: { ix: 0, iy: 0, act: false }           // an on-screen stick and button write here; act is cleared once read
+      virtual: { ix: 0, iy: 0, act: false, sprint: false }   // an on-screen stick and buttons write here; act and sprint are cleared once read
     };
 
     /* ---------- interface ---------- */

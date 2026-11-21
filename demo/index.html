@@ -157,7 +157,7 @@
       <p class="lede">One carries the fire into the dark. One keeps it burning. Both come home to it.</p>
       <div class="roles">
         <div class="role"><span class="dot keeper"></span><b>Hearth keeper</b><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span> move <kbd>E</kbd> throw a log on the fire</div>
-        <div class="role"><span class="dot hunter"></span><b>Hunter</b><span class="keys"><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></span> move <kbd>Enter</kbd> raise the lantern</div>
+        <div class="role"><span class="dot hunter"></span><b>Hunter</b><span class="keys"><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></span> move <kbd>Enter</kbd> raise the lantern <kbd>Shift</kbd> sprint</div>
       </div>
       <button id="play" type="button">Click to play</button>
     </div>
@@ -166,7 +166,7 @@
   <button id="resume" type="button" hidden>Click to keep playing</button>
 
   <div id="splash" class="gutter" role="status">
-    <img id="splash-logo" src="assets/logo.png?v=202611211816" alt="The hunter and the hearth keeper" width="720" height="554">
+    <img id="splash-logo" src="assets/logo.png?v=202611212127" alt="The hunter and the hearth keeper" width="720" height="554">
     <div class="loadline">
       <div class="loadbar" aria-hidden="true"><i></i></div>
       <p class="loadtxt">Lighting the hearth</p>
@@ -210,20 +210,24 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
-<script src="js/kit.js?v=202611211816"></script>
-<script src="js/world.js?v=202611211816"></script>
-<script src="js/actors.js?v=202611211816"></script>
-<script src="js/view.js?v=202611211816"></script>
-<script src="js/game.js?v=202611211816"></script>
+<script src="js/kit.js?v=202611212127"></script>
+<script src="js/world.js?v=202611212127"></script>
+<script src="js/actors.js?v=202611212127"></script>
+<script src="js/view.js?v=202611212127"></script>
+<script src="js/game.js?v=202611212127"></script>
 <!-- Mechanics: one file each. They register with HH.mechanics and plug into game.js (see the note there). -->
-<script src="js/mech-wood.js?v=202611211816"></script>
-<script src="js/mech-supper.js?v=202611211816"></script>
-<script src="js/mech-waystone.js?v=202611211816"></script>
-<script src="js/mech-goblin.js?v=202611211816"></script>
-<script src="js/mech-dark.js?v=202611211816"></script>
+<script src="js/mech-wood.js?v=202611212127"></script>
+<script src="js/mech-supper.js?v=202611212127"></script>
+<script src="js/mech-garden.js?v=202611212127"></script>
+<script src="js/mech-mushroom.js?v=202611212127"></script>
+<script src="js/mech-waystone.js?v=202611212127"></script>
+<script src="js/mech-cat.js?v=202611212127"></script>
+<script src="js/mech-goblin.js?v=202611212127"></script>
+<script src="js/mech-dark.js?v=202611212127"></script>
+<script src="js/mech-sprint.js?v=202611212127"></script>
 <!-- Touch: phones and tablets play alone, switching between the two characters. -->
-<script src="js/touch.js?v=202611211816"></script>
-<script src="js/model-hunter.js?v=202611211816"></script>
+<script src="js/touch.js?v=202611212127"></script>
+<script src="js/model-hunter.js?v=202611212127"></script>
 <script>
   (function () {
     var errors = [];

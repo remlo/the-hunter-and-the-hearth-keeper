@@ -13,6 +13,8 @@
     stickBase: 112,           // px, the base ring
     stickKnob: 48,            // px
     actSize: 72,              // px, action button
+    sprintSize: 54,           // px, the sprint button beside it
+    sprintGap: 12,            // px between the sprint button and the action button
     swapSize: 56,             // px, portrait
     edge: 20,                 // px, gap from the screen edge (or the safe area, if larger)
     labelSeconds: 1.5,        // how long "You are the Hunter" stays up
@@ -32,6 +34,7 @@
   const ICON = {
     flame: '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M12.6 2.2c.5 3-1 4.6-2.6 6.4C8.3 10.500 7 12.200 7 14.800 7 18.400 9.200 21.200 12.200 21.200S17.500 18.700 17.500 15.300c0-2-.9-3.500-1.900-4.600-.2 1.300-.8 2.200-1.600 2.700.5-3.700-.1-7.800-1.400-11.200Z" fill="currentColor"/><path d="M12.200 21.200c-1.700 0-3-1.300-3-3.100 0-1.700 1.400-2.600 2.300-4 .8 1 2.200 1.900 2.200 3.900 0 1.700-.7 3.200-1.500 3.200Z" fill="#fff1cf" opacity=".85"/></svg>',
     lantern: '<svg viewBox="0 0 20 24" width="{s}" height="{h}" aria-hidden="true"><path d="M7 4a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><rect x="4" y="4.6" width="12" height="3" rx="1.2" fill="currentColor"/><rect x="6" y="8.6" width="8" height="10.4" rx="1" fill="currentColor" opacity=".55"/><rect x="5.1" y="7.8" width="9.8" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="3.4" y="19.6" width="13.2" height="2.8" rx="1.2" fill="currentColor"/></svg>',
+    chevrons: '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/></svg>',
     house: '<svg viewBox="0 0 24 24" width="25" height="25" aria-hidden="true"><path d="M3.500 11.500 12 4l8.500 7.500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.500V20h12v-9.500" fill="currentColor"/><rect x="10.300" y="14" width="3.400" height="6" rx="1" fill="#1b1310" opacity=".55"/></svg>'
   };
   const lanternIcon = (w, h) => ICON.lantern.replace('{s}', w).replace('{h}', h);
@@ -46,6 +49,11 @@
     '#game.is-touch #hud .hint, #game.is-touch #hud .who { display: none; }',
     '#game.is-touch #hud .chip { gap: 8px; padding: 6px 8px; border-radius: 12px; }',
     '#game.is-touch #hud .chip.t-hollow { display: none; }',
+    /* the sprint marks in the Hunter's chip are tighter here, so the chip stays clear of the portrait on a narrow phone */
+    '#game.is-touch .hhs-sprint { gap: 5px; padding-left: 6px; margin-left: 0; }',
+    '#game.is-touch .hhs-sprint svg { width: 16px; height: 14px; }',
+    '#game.is-touch .hhs-mark { width: 9px; }',
+    '#game.is-touch .hhs-marks { gap: 3px; }',
 
     /* floating stick */
     '.t-stick { position: absolute; left: 0; top: 0; z-index: 3; width: var(--tb); height: var(--tb); margin: calc(var(--tb) / -2) 0 0 calc(var(--tb) / -2); border-radius: 50%; pointer-events: none; opacity: 0; transform: translate(var(--sx, 0px), var(--sy, 0px)) scale(0.86); background: radial-gradient(circle, rgba(244,230,200,0.08) 0%, rgba(244,230,200,0.2) 100%); border: 2px solid rgba(244,230,200,0.5); box-shadow: 0 6px 22px rgba(0,0,0,0.28); transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1); }',
@@ -67,6 +75,15 @@
     '.t-act.is-ready:active, .t-act.is-ready.is-down { box-shadow: 0 1px 0 #a9541d, 0 0 30px rgba(255,180,74,0.9); }',
     '.t-act .t-ico.is-swap { animation: t-pop 0.34s cubic-bezier(0.3, 1.6, 0.5, 1); }',
     '.t-act.is-tap::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--ember); animation: t-ripple 0.45s ease-out forwards; pointer-events: none; }',
+
+    /* the sprint button: smaller, just left of the action button, there only for the Hunter with a burst left */
+    '.t-sprint, #game.is-playing .t-sprint { right: calc(max(var(--te), env(safe-area-inset-right, 0px)) + var(--ta) + var(--tg)); bottom: calc(max(calc(var(--te) + 4px), env(safe-area-inset-bottom, 0px)) + (var(--ta) - var(--tsp)) / 2); width: var(--tsp); height: var(--tsp); background: rgba(38, 28, 22, 0.88); border: 2px solid rgba(244,230,200,0.42); box-shadow: 0 4px 0 rgba(0,0,0,0.4), 0 8px 18px rgba(0,0,0,0.35); display: grid; place-items: center; color: #b4cbeb; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.4); transition: opacity 0.16s ease, transform 0.16s ease, box-shadow 0.25s ease, visibility 0s linear 0.16s; }',
+    '#game.is-playing .t-sprint.is-in { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition: opacity 0.12s ease, transform 0.34s cubic-bezier(0.3, 1.7, 0.5, 1), box-shadow 0.25s ease, visibility 0s; }',
+    '#game.is-playing .t-sprint.is-in:active, #game.is-playing .t-sprint.is-in.is-down { transform: translateY(3px) scale(0.95); box-shadow: 0 1px 0 rgba(0,0,0,0.32), 0 3px 8px rgba(0,0,0,0.3); }',
+    '.t-sprint .t-ico { display: grid; place-items: center; margin-top: 5px; }',
+    '.t-sdot { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(244,230,200,0.2); transform: rotate(var(--a)) translateY(calc(var(--tsp) / -2 + 8px)); transition: background 0.18s ease, box-shadow 0.18s ease; }',
+    '.t-sdot.is-on { background: var(--ember); box-shadow: 0 0 6px rgba(255,180,74,0.8); }',
+    '.t-sprint.is-tap::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid #b4cbeb; animation: t-ripple 0.45s ease-out forwards; pointer-events: none; }',
 
     /* the portrait: the other character, with a ring that carries the one thing worth watching */
     '.t-swap { top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: var(--ts); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border-radius: 12px; background: none; }',
@@ -101,7 +118,7 @@
 
     '@media (prefers-reduced-motion: reduce) {',
     '  .t-stick, .t-stick.is-on, .t-btn, .t-disc, .t-face { transition: none; }',
-    '  .t-act.is-ready, .t-swap.is-low .t-disc, .t-act .t-ico.is-swap, .t-face > span.is-swap, .t-act.is-tap::after { animation: none; }',
+    '  .t-act.is-ready, .t-swap.is-low .t-disc, .t-act .t-ico.is-swap, .t-face > span.is-swap, .t-act.is-tap::after, .t-sprint.is-tap::after { animation: none; }',
     '  .t-who.is-on { animation: none; opacity: 1; transform: none; }',
     '}'
   ].join('\n');
@@ -111,7 +128,7 @@
     name: 'touch',
     ctx: null, game: null, els: null,
     stickId: null, stickOrigin: { x: 0, y: 0 },
-    shown: { who: '', ring: -1, low: false, ready: false },
+    shown: { who: '', ring: -1, low: false, ready: false, sprint: false, sprintN: -1 },
     whoTimer: 0, tapTimer: 0, scaleKey: '',
 
     init(ctx) {
@@ -129,6 +146,8 @@
       game.style.setProperty('--tk', TUNE.stickKnob + 'px');
       game.style.setProperty('--ta', TUNE.actSize + 'px');
       game.style.setProperty('--ts', TUNE.swapSize + 'px');
+      game.style.setProperty('--tsp', TUNE.sprintSize + 'px');
+      game.style.setProperty('--tg', TUNE.sprintGap + 'px');
       game.style.setProperty('--te', TUNE.edge + 'px');
 
       this.rewriteTitle();
@@ -145,7 +164,7 @@
         roles.textContent = '';
         const p = document.createElement('span');
         p.className = 't-line';
-        p.textContent = 'Drag anywhere to walk. Tap the round button to act. Tap the portrait to switch.';
+        p.textContent = 'Drag anywhere to walk. Tap the round button to act. Tap the portrait to switch. After supper the Hunter gets a sprint button.';
         roles.appendChild(p);
       }
       if (play) play.textContent = 'Tap to play';
@@ -163,6 +182,15 @@
       el.act.type = 'button';
       el.act.setAttribute('aria-label', 'Act');
       el.actIco = mk('span', 't-ico', el.act, ICON.flame);
+
+      el.sprint = mk('button', 't-btn t-ctl t-sprint');
+      el.sprint.type = 'button';
+      el.sprint.setAttribute('aria-label', 'Sprint');
+      el.sprint.setAttribute('aria-hidden', 'true');
+      el.sprint.tabIndex = -1;
+      el.sprintIco = mk('span', 't-ico', el.sprint, ICON.chevrons);
+      el.sdots = [];
+      for (let i = 0; i < 3; i++) { const d = mk('i', 't-sdot', el.sprint); d.style.setProperty('--a', ((i - 1) * 38) + 'deg'); el.sdots.push(d); }
 
       el.swap = mk('button', 't-btn t-ctl t-swap is-hunter');
       el.swap.type = 'button';
@@ -223,6 +251,7 @@
         btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); fn(); } });
       };
       press(el.act, () => self.tap());
+      press(el.sprint, () => self.sprintTap());
       press(el.swap, () => self.switchTo());
 
       // orientation
@@ -257,10 +286,20 @@
       clearTimeout(this.tapTimer);
       this.tapTimer = setTimeout(() => a.classList.remove('is-tap'), 480);
     },
+    sprintTap() {
+      const ctx = this.ctx;
+      if (ctx.solo !== 'hunter') return;
+      ctx.virtual.sprint = true;
+      const s = this.els.sprint;
+      s.classList.remove('is-tap'); void s.offsetWidth; s.classList.add('is-tap');
+      clearTimeout(this.sprintTimer);
+      this.sprintTimer = setTimeout(() => s.classList.remove('is-tap'), 480);
+    },
     switchTo() {
       const ctx = this.ctx;
       ctx.solo = ctx.solo === 'keeper' ? 'hunter' : 'keeper';
       ctx.virtual.act = false;
+      ctx.virtual.sprint = false;
       this.refresh(false);
       this.sayWho();
     },
@@ -306,6 +345,19 @@
       if (low !== this.shown.low) { this.shown.low = low; el.swap.classList.toggle('is-low', low); }
       const ready = !!st.canStoke && !hunter;
       if (ready !== this.shown.ready) { this.shown.ready = ready; el.act.classList.toggle('is-ready', ready); }
+      // the sprint button: only for the Hunter, and only while a burst is left; it pops in and out
+      const n = ctx.sprint ? ctx.sprint.count() : 0, showSprint = hunter && n > 0;
+      if (showSprint !== this.shown.sprint) {
+        this.shown.sprint = showSprint;
+        el.sprint.classList.toggle('is-in', showSprint);
+        el.sprint.setAttribute('aria-hidden', showSprint ? 'false' : 'true');
+        el.sprint.tabIndex = showSprint ? 0 : -1;
+      }
+      if (n !== this.shown.sprintN) {
+        this.shown.sprintN = n;
+        el.sdots.forEach((d, i) => d.classList.toggle('is-on', i < n));
+        el.sprint.setAttribute('aria-label', 'Sprint, ' + n + ' left');
+      }
       // chips with nothing left to show (the Keeper's, once its keys are hidden) step aside
       const chips = ctx.hud ? ctx.hud.querySelectorAll('.chip') : [];
       for (let i = 0; i < chips.length; i++) {
@@ -339,7 +391,8 @@
       },
       switch() { self.switchTo(); return this.state(); },
       stick(ix, iy) { self.stick(ix, iy); return this.state(); },
-      tap() { self.tap(); return this.state(); }
+      tap() { self.tap(); return this.state(); },
+      sprint() { self.sprintTap(); return this.state(); }
     };
   };
 

@@ -322,6 +322,7 @@
     if (!c.packed && t >= D.packAt) {
       c.packed = true;
       if (ctx.wood && ctx.wood.count) ctx.wood.take(ctx.wood.count());
+      ctx.emit('packlost');   // tell the other mechanics the pack is gone
       const bx = c.hx - Math.sin(h.facing) * 0.3, bz = c.hz - Math.cos(h.facing) * 0.3;
       ctx.sparks(bx, 0.75, bz, 22, { speed: 2.0, up: 2.4, life: 1.2, size: 0.1 });
       for (let i = 0; i < 6; i++) ps.spawn({ x: bx + (Math.random() - 0.5) * 0.3, y: 0.7 + Math.random() * 0.3, z: bz + (Math.random() - 0.5) * 0.3, vx: (Math.random() - 0.5) * 0.8, vy: 0.5, vz: (Math.random() - 0.5) * 0.8, life: 0.5, size: 0.55, r: 2.2, g: 0.9, b: 0.25, drag: 2, fadeIn: 0.03 });

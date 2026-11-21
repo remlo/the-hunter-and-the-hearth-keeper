@@ -1,19 +1,19 @@
-/* model-hunter.js: trial. Shows the Hunter built in Blender (assets/hunter.glb) instead of the code-built one.
-   Only active when the address contains #model. Without it this file returns at once and changes nothing.
+/* model-hunter.js: shows the Hunter built in Blender (assets/hunter.glb, from models/hunter/) instead of the
+   code-built one. On by default; add #codehunter to the address to see the old code-built Hunter instead.
    The code-built Hunter stays in place: its groups, pivots and animation keep running. The Blender parts are
    hung on those same groups (head, arms, legs, body), the code-built meshes they replace are hidden, and every
    part gets the demo's own lit material so the hearth, the lantern and the gloom treat it like the rest of the world.
    If the loader or the file fails, one console.warn is written and the code-built Hunter is left alone. */
 (function () {
   'use strict';
-  if (String(location.hash).indexOf('model') < 0) return;
+  if (String(location.hash).indexOf('codehunter') >= 0) return;
 
   const T = THREE, HH = window.HH;
   const LOADER_URL = 'https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js';
   const GLB_URL = 'assets/hunter.glb';
 
   // Which demo group each Blender object hangs on. Blender's +X (the _L objects) is the demo's +X group.
-  const BODY = ['Body', 'Vest', 'TunicHem', 'Pauldrons', 'Strap', 'Belt', 'Buckle', 'Scarf', 'Pack', 'Bedroll', 'Sword'];
+  const BODY = ['Body', 'Vest', 'TunicHem', 'Pauldrons', 'Strap', 'Belt', 'Buckle', 'Scarf', 'Pack', 'Bedroll'];
   const HEAD = ['Head', 'Hair'];
   const EYES = ['Eyes'];
   const ARM = ['Arm', 'Hand', 'Sleeve', 'Bracer'];
@@ -29,7 +29,7 @@
 
   /* the object name a mesh belongs to, e.g. "Sleeve_L" for the mesh of any of its material slots */
   function objectName(mesh) {
-    const known = /^(Body|Head|Hair|Eyes|Vest|TunicHem|Pauldrons|Strap|Belt|Buckle|Scarf|Pack|Bedroll|Sword|Lantern|(?:Arm|Hand|Sleeve|Bracer|Leg|Trouser|Boot)_[LR])/;
+    const known = /^(Body|Head|Hair|Eyes|Vest|TunicHem|Pauldrons|Strap|Belt|Buckle|Scarf|Pack|Bedroll|Lantern|(?:Arm|Hand|Sleeve|Bracer|Leg|Trouser|Boot)_[LR])/;
     for (let o = mesh; o; o = o.parent) {
       const m = known.exec(o.name || '');
       if (m) return m[1];
@@ -135,12 +135,33 @@
     try { install(); } catch (e) { warn(e); }
   }
 
+  /* Some hosts will not serve a .glb file (the private claude.ai page is one). For those the same model can be
+     published packed into a script, js/hunter-glb.js, which sets HH.hunterGlb64 to the file's bytes in base64.
+     It is only asked for when the .glb itself cannot be loaded, or with #packed on the address to test it.
+     The packed script is made at publishing time from assets/hunter.glb; it is not kept in the project. */
+  const PACKED_URL = 'js/hunter-glb.js';
+  function loadPacked(why) {
+    const p = document.createElement('script');
+    p.src = PACKED_URL;
+    p.onerror = () => warn(why || 'the model file did not load');
+    p.onload = () => {
+      try {
+        const bin = atob(String(HH.hunterGlb64 || '')), bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        if (!bytes.length) throw new Error('the packed model is empty');
+        new T.GLTFLoader().parse(bytes.buffer, '', g => { gltf = g; tryInstall(); }, e => warn(e));
+      } catch (e) { warn(e); }
+    };
+    (document.head || document.documentElement).appendChild(p);
+  }
+
   const s = document.createElement('script');
   s.src = LOADER_URL;
   s.onerror = () => warn('GLTFLoader script did not load');
   s.onload = () => {
     try {
-      new T.GLTFLoader().load(GLB_URL, g => { gltf = g; tryInstall(); }, undefined, e => warn(e));
+      if (String(location.hash).indexOf('packed') >= 0) loadPacked();
+      else new T.GLTFLoader().load(GLB_URL, g => { gltf = g; tryInstall(); }, undefined, e => loadPacked(e));
     } catch (e) { warn(e); }
   };
   (document.head || document.documentElement).appendChild(s);
