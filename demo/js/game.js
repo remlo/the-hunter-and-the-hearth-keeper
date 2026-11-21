@@ -21,6 +21,7 @@
     logs: 5,                   // logs on the pile when the game starts
     pileMax: 10,               // most the pile (and the rack) can hold
     stokeReach: 1.75,
+    raiseCost: 0.06,           // a raise in the forest costs this share of a full lantern
     autoRestock: true          // the pile refills by itself when the Hunter comes home; a gathering mechanic turns this off
   };
 
@@ -103,6 +104,7 @@
     function readInput(who) {
       const a = auto[who];
       if (a) return { ix: a.ix, iy: a.iy, act: false };
+      if (ctx.freeze[who]) return { ix: 0, iy: 0, act: false };
       if (!st.started) return { ix: 0, iy: 0, act: false };
       // playing alone: one character is active and takes every control; the other stands still
       if (ctx.solo) {
@@ -207,6 +209,18 @@
       T, HH, W, TUNE, st, scene, view, keeper, hunter, fire, particles: ps,
       input: { keeper: { ix: 0, iy: 0, act: false }, hunter: { ix: 0, iy: 0, act: false } },   // this step's input
       sparks, pulseHud, emit, addLogs,
+      freeze: { keeper: false, hunter: false },         // true: that character ignores all input (movement and action)
+      // ask for a stoke as the Keeper's press would (wherever she stands); true if a log started its throw
+      stoke() {
+        if (st.logs > 0 && st.throwT < 0 && st.restock.length === 0) {
+          st.throwLog = W.logs[st.logs - 1];
+          st.throwFrom.copy(st.throwLog.position);
+          st.throwT = 0; st.logs -= 1; st.canStoke = false;
+          keeper.playAct('throw');
+          return true;
+        }
+        return false;
+      },
       near: (c, p, r) => Math.hypot(c.x - p.x, c.z - p.z) < r,
       safeZones: [],                                    // { x, z, r }: pools of warm light where the lantern does not burn
       warm: i => ({ pos: HH.U.uWarmPos.value[i], col: HH.U.uWarmCol.value[i] }),   // warm-light slots: 4 and 5 waystone, 6 supper, 7 free
@@ -310,6 +324,12 @@
       if (inH.act && hunter.act <= 0) {
         hunter.playAct('raise'); st.raise = 1; st.flutter = 1;
         if (lit) sparks(hunter.lanternWorld.x, hunter.lanternWorld.y + 0.5, hunter.lanternWorld.z, 8, { speed: 0.8, up: 1.6, size: 0.06 });
+        let cost = 0;
+        if (!st.home && !inSafe && st.fuel > 0 && st.flare <= 0 && Math.hypot(hunter.x - W.waystone.x, hunter.z - W.waystone.z) > 2.4 && st.fuel > 0.02) {
+          cost = Math.min(TUNE.raiseCost, st.fuel - 0.02);
+          st.fuel -= cost;
+        }
+        emit('raise', { cost });
       }
       // wood comes home with the Hunter
       if (st.owedWood && st.throwT < 0 && Math.hypot(hunter.x - W.hearthFront.x, hunter.z - W.hearthFront.z) < 5.5) {
@@ -446,7 +466,7 @@
       setLantern(f) { st.fuel = clamp(f, 0, 1); return this; },
       setFlare(s) { st.flare = s; return this; },
       setLogs(n) { st.logs = clamp(n, 0, TUNE.pileMax); W.logs.forEach((l, i) => { l.visible = i < st.logs; l.position.copy(W.logSlots[i]); l.scale.setScalar(1); }); return this; },
-      stoke() { if (st.logs > 0 && st.throwT < 0) { st.throwLog = W.logs[st.logs - 1]; st.throwFrom.copy(st.throwLog.position); st.throwT = 0; st.logs -= 1; keeper.playAct('throw'); } return this; },
+      stoke() { ctx.stoke(); return this; },
       raise() { hunter.playAct('raise'); st.raise = 1; st.flutter = 1; return this; },
       homecoming() { homecoming(); return this; },
       walk(n, ix, iy, seconds) { auto[n] = { ix, iy, t: seconds }; return this; },

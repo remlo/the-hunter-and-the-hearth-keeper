@@ -143,6 +143,26 @@
       who.parentNode.insertBefore(el, who.nextSibling);
       M.pipsEl = el;
       M.syncHud();
+
+      // for other mechanics: the Hunter's pack
+      ctx.wood = {
+        count: () => M.carry,                 // logs on the Hunter's pack
+        max: TUNE.carryMax,
+        take(n) {                             // remove up to n logs from the pack at once; returns how many were removed
+          const k = Math.min(Math.max(0, Math.floor(n) || 0), M.carry);
+          if (k <= 0) return 0;
+          if (M.deliver) {
+            const l = M.carried.children[M.deliver.idx];
+            if (l) { l.userData.winding = false; l.position.y = l.userData.home.y; l.scale.setScalar(1); }
+            M.deliver = null;
+          }
+          M.setCarry(M.carry - k, false);
+          M.carried.children.forEach((c, i) => { if (i >= M.carry) { c.userData.pop = 0; c.visible = false; } });
+          M.wobble = 1;
+          return k;
+        },
+        packPos(out) { return M.backPos(ctx, out); }   // world position of the pack
+      };
     },
 
     /* ---------- bundles ---------- */

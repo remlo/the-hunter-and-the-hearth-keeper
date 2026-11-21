@@ -310,6 +310,13 @@
         const px = view.inspect.who === 'B' ? bx : ax, py = view.inspect.who === 'B' ? by : ay;
         cAx = cBx = px; cAy = cBy = py + 0.5; V = view.inspect.V; view.q = 0;
       }
+      if (view.shakeAmt > 0.0005) { // a mechanic's shudder (view.shake): the Hunter's picture only while split; both are one picture otherwise
+        view.shakeT += dt;
+        const ox = Math.sin(view.shakeT * 63) * view.shakeAmt, oy = Math.sin(view.shakeT * 49 + 1.3) * view.shakeAmt;
+        cBx += ox; cBy += oy;
+        if (q <= 1 || view.solo || view.inspect) { cAx += ox; cAy += oy; }
+        view.shakeAmt *= Math.exp(-9 * dt);
+      } else view.shakeAmt = 0;
       view.V = V;
       view.pxPerUnit = H / V;
       const wA = setCam(camA, cAx, cAy, V); tA.set(wA.x, 0, wA.z);
@@ -330,6 +337,8 @@
     };
 
     view.pulseSeam = function (k) { view.seam = Math.max(view.seam, k); };
+    view.shakeAmt = 0; view.shakeT = 0;   // off by default
+    view.shake = function (k) { view.shakeAmt = Math.max(view.shakeAmt, k); };   // k: offset in view units; it decays by itself
 
     /* scissor box for one side of the seam, so each split view only shades its own half */
     function sideBox(sign, rt) {
