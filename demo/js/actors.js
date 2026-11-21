@@ -40,16 +40,30 @@
     const hunter = kind === 'hunter';
     const root = new T.Group(), rig = new T.Group();
     root.add(rig);
-    const skin = HH.col(P.skin);
-    const top = HH.col(hunter ? P.blue : P.white);
-    const topD = hunter ? HH.tint(P.blue, -0.06, 0, 0) : HH.col(P.olive);
+    /* soft-clay look: every form is a rounded box or an ellipsoid with smooth shading */
+    const SPH = new T.SphereGeometry(1, 18, 12);
+    const ball = (k, rx, ry, rz, x, y, z, color, o) => k.geo(SPH, x, y, z, color, Object.assign({ s: [rx, ry, rz], smooth: true }, o));
+    const ring = (k, r, tube, x, y, z, color, o) => k.geo(new T.TorusGeometry(r, tube, 10, 22), x, y, z, color, Object.assign({ smooth: true }, o));
+    const rb = (k, w, h, d, x, y, z, color, o) => k.box(w, h, d, x, y, z, color, Object.assign({ smooth: true }, o));
+    // a tuft of hair: a soft cone. rx tips it forward (positive) or back, rz leans it sideways
+    const CONE = new T.ConeGeometry(1, 1, 10);
+    const tuft = (k, r, len, x, y, z, color, rx, rz) => k.geo(CONE, x, y, z, color, { s: [r, len, r * 0.85], rx: rx || 0, rz: rz || 0, smooth: true });
+    const C = HH.col;
+    const skin = C(0xf3b98b), skinD = C(0xe8a577), eyeC = C(0x3a2420);
+    const gold = C(0xe0a437), beltC = C(hunter ? 0x6e4326 : 0x6e4326);
+    const trouser = C(hunter ? 0x5b3a2a : 0x4f3225);
+    const bootC = C(hunter ? 0x7a4526 : 0x6b3d22), bootD = C(hunter ? 0x6a3b20 : 0x5c3419);
+    const shirt = C(0xe2ceae), shirtD = C(0xd0ba98);   // cream, a step darker than the sheet so it does not bloom in sunlight
+    const tunic = C(0xa39282), skirtH = C(0x8e7e6c), leather = C(0x8a5630), leatherD = C(0x744624);
+    const apron = C(0x8a4f33), apronD = C(0x77422a), pouchC = C(0xa05a2c);
 
     const leg = side => {
       const pivot = new T.Group();
       pivot.position.set(side * 0.115, 0.22, 0);
       part(k => {
-        k.box(0.18, 0.13, 0.2, 0, -0.06, 0, hunter ? HH.col(P.woodD) : HH.tint(P.olive, -0.07, 0, 0), { r: 0.04 });
-        k.box(0.19, 0.11, 0.25, 0, -0.165, 0.02, HH.col(P.boot), { r: 0.045 });
+        rb(k, 0.17, 0.17, 0.19, 0, -0.06, 0, trouser, { r: 0.07 });
+        rb(k, 0.2, 0.135, 0.28, 0, -0.1525, 0.035, bootC, { r: 0.07 });
+        rb(k, 0.205, 0.05, 0.22, 0, -0.095, -0.005, bootD, { r: 0.024 });
       }, pivot);
       rig.add(pivot);
       return pivot;
@@ -61,26 +75,45 @@
     rig.add(torso);
     part(k => {
       if (hunter) {
-        k.box(0.48, 0.38, 0.33, 0, 0.2, 0, top, { r: 0.09 });
-        k.box(0.52, 0.13, 0.36, 0, 0.07, 0, topD, { r: 0.05 });
-        k.box(0.5, 0.075, 0.345, 0, 0.16, 0, HH.col(P.woodD), { r: 0.025 });
-        k.box(0.1, 0.09, 0.03, 0, 0.16, 0.175, HH.col(P.gold), { r: 0.015 });
-        // scarf
-        k.box(0.5, 0.12, 0.4, 0, 0.385, 0.01, HH.col(P.red), { r: 0.05 });
-        k.box(0.14, 0.2, 0.07, -0.13, 0.28, 0.185, HH.tint(P.red, -0.04, 0, 0), { r: 0.03, rz: 0.2 });
-        // pack
-        k.box(0.36, 0.33, 0.17, 0, 0.2, -0.24, HH.col(P.brown), { r: 0.05 });
-        k.box(0.38, 0.12, 0.19, 0, 0.32, -0.24, HH.col(P.woodD), { r: 0.04 });
-        k.box(0.07, 0.07, 0.03, 0, 0.27, -0.335, HH.col(P.gold), { r: 0.015 });
-        k.cyl(0.07, 0.07, 0.4, 7, 0, 0.44, -0.24, HH.col(P.cream), { rz: Math.PI / 2, smooth: true });
+        rb(k, 0.46, 0.42, 0.32, 0, 0.19, 0, tunic, { r: 0.15 });
+        rb(k, 0.5, 0.16, 0.36, 0, 0.06, 0, skirtH, { r: 0.07 });
+        // belt and buckle
+        rb(k, 0.485, 0.07, 0.34, 0, 0.15, 0, beltC, { r: 0.032 });
+        rb(k, 0.115, 0.095, 0.03, 0, 0.15, 0.172, gold, { r: 0.022 });
+        rb(k, 0.055, 0.04, 0.035, 0, 0.15, 0.176, beltC, { r: 0.012 });
+        // chest strap
+        rb(k, 0.065, 0.37, 0.022, -0.02, 0.25, 0.158, leather, { r: 0.01, rz: 0.62 });
+        // scarf: a thick cowl resting on the shoulders, a little higher behind
+        ring(k, 0.25, 0.1, 0, 0.345, 0.0, C(0x5b7db4), { rx: Math.PI / 2, s: [1.02, 0.84, 1.1] });
+        ball(k, 0.2, 0.095, 0.1, 0, 0.4, -0.19, C(0x5b7db4));
+        ball(k, 0.1, 0.07, 0.06, -0.1, 0.285, 0.17, C(0x4f6fa6), { rz: 0.3 });
+        // pack and bedroll
+        rb(k, 0.36, 0.33, 0.18, 0, 0.2, -0.235, C(0xb08a5a), { r: 0.075 });
+        rb(k, 0.38, 0.15, 0.2, 0, 0.3, -0.235, C(0xa07c4e), { r: 0.06 });
+        rb(k, 0.075, 0.075, 0.03, 0, 0.255, -0.337, gold, { r: 0.02 });
+        rb(k, 0.035, 0.03, 0.035, 0, 0.255, -0.34, C(0x6e4326), { r: 0.01 });
+        k.cyl(0.088, 0.088, 0.44, 16, 0, 0.455, -0.25, C(0x9b6a3c), { rz: Math.PI / 2, smooth: true });
+        [-1, 1].forEach(s => {
+          k.cyl(0.095, 0.095, 0.035, 16, s * 0.1, 0.455, -0.25, leatherD, { rz: Math.PI / 2, smooth: true });
+          k.cyl(0.079, 0.079, 0.02, 16, s * 0.222, 0.455, -0.25, C(0xb27d44), { rz: Math.PI / 2, smooth: true });
+          ring(k, 0.05, 0.016, s * 0.234, 0.455, -0.25, C(0x7a5028), { ry: Math.PI / 2 });
+          ring(k, 0.022, 0.013, s * 0.236, 0.455, -0.25, C(0x7a5028), { ry: Math.PI / 2 });
+        });
       } else {
-        k.box(0.47, 0.38, 0.32, 0, 0.2, 0, top, { r: 0.09 });
-        k.box(0.58, 0.2, 0.42, 0, 0.06, 0, topD, { r: 0.07 });
-        k.box(0.34, 0.25, 0.04, 0, 0.23, 0.155, topD, { r: 0.02 });
-        k.box(0.5, 0.06, 0.345, 0, 0.165, 0, HH.tint(P.olive, -0.08, 0, 0), { r: 0.02 });
-        k.box(0.07, 0.14, 0.04, -0.13, 0.35, 0.15, topD, { r: 0.015 });
-        k.box(0.07, 0.14, 0.04, 0.13, 0.35, 0.15, topD, { r: 0.015 });
-        k.box(0.16, 0.12, 0.035, 0.13, 0.1, 0.215, HH.col(P.cream), { r: 0.015 });
+        rb(k, 0.46, 0.42, 0.32, 0, 0.19, 0, shirt, { r: 0.15 });
+        // apron: bib, skirt to mid-thigh, straps that cross on the back
+        rb(k, 0.52, 0.2, 0.37, 0, 0.065, 0, apron, { r: 0.09 });
+        rb(k, 0.29, 0.21, 0.03, 0, 0.26, 0.158, apron, { r: 0.04 });
+        rb(k, 0.05, 0.15, 0.025, -0.1, 0.33, 0.152, apronD, { r: 0.012 });
+        rb(k, 0.05, 0.15, 0.025, 0.1, 0.33, 0.152, apronD, { r: 0.012 });
+        rb(k, 0.05, 0.4, 0.022, 0, 0.27, -0.158, apronD, { r: 0.01, rz: 0.55 });
+        rb(k, 0.05, 0.4, 0.022, 0, 0.27, -0.16, apronD, { r: 0.01, rz: -0.55 });
+        // belt, buckle and the pouch on the hip
+        rb(k, 0.49, 0.06, 0.345, 0, 0.165, 0, beltC, { r: 0.028 });
+        rb(k, 0.105, 0.085, 0.03, 0, 0.165, 0.172, gold, { r: 0.02 });
+        rb(k, 0.05, 0.036, 0.035, 0, 0.165, 0.176, beltC, { r: 0.01 });
+        rb(k, 0.1, 0.13, 0.13, 0.25, 0.02, 0.05, pouchC, { r: 0.04 });
+        ball(k, 0.017, 0.017, 0.012, 0.25, 0.06, 0.118, gold);
       }
     }, torso);
 
@@ -88,8 +121,15 @@
       const pivot = new T.Group();
       pivot.position.set(side * 0.31, 0.33, 0);
       part(k => {
-        k.box(0.15, 0.2, 0.17, 0, -0.07, 0, top, { r: 0.05 });
-        k.box(0.14, 0.12, 0.15, 0, -0.21, 0, skin, { r: 0.05 });
+        if (hunter) {
+          rb(k, 0.16, 0.2, 0.17, 0, -0.07, 0, tunic, { r: 0.07 });
+          ball(k, 0.105, 0.075, 0.105, side * 0.012, 0.03, 0, leather);
+          k.cyl(0.078, 0.082, 0.1, 14, 0, -0.185, 0, leather, { smooth: true });
+        } else {
+          ball(k, 0.105, 0.145, 0.105, 0, -0.1, 0, shirt);
+          k.cyl(0.068, 0.075, 0.055, 14, 0, -0.205, 0, shirtD, { smooth: true });
+        }
+        ball(k, 0.076, 0.074, 0.076, 0, -0.268, 0, skin);
       }, pivot);
       torso.add(pivot);
       return pivot;
@@ -100,36 +140,53 @@
     head.position.y = 0.67;
     torso.add(head);
     part(k => {
-      k.box(0.66, 0.58, 0.58, 0, 0, 0, skin, { r: 0.11 });
-      k.box(0.1, 0.06, 0.02, -0.2, -0.1, 0.286, HH.tint(P.skin, -0.06, 0.1, -0.02), { r: 0.01 });
-      k.box(0.1, 0.06, 0.02, 0.2, -0.1, 0.286, HH.tint(P.skin, -0.06, 0.1, -0.02), { r: 0.01 });
+      rb(k, 0.64, 0.56, 0.56, 0, 0, 0, skin, { r: 0.18 });
+      // small round ears at eye level
+      [-1, 1].forEach(s => ball(k, 0.04, 0.062, 0.062, s * 0.318, -0.045, -0.01, skinD));
       if (hunter) {
-        const h = HH.col(P.hair), hd = HH.col(P.hairD);
-        k.box(0.74, 0.24, 0.66, 0, 0.25, -0.02, h, { r: 0.08 });
-        k.box(0.74, 0.46, 0.16, 0, 0.07, -0.28, h, { r: 0.06 });
-        k.box(0.12, 0.34, 0.42, -0.34, 0.1, -0.06, h, { r: 0.05 });
-        k.box(0.12, 0.34, 0.42, 0.34, 0.1, -0.06, h, { r: 0.05 });
-        k.box(0.26, 0.17, 0.14, -0.22, 0.2, 0.28, hd, { r: 0.05, rz: 0.18 });
-        k.box(0.24, 0.2, 0.14, 0.02, 0.19, 0.29, h, { r: 0.05, rz: -0.12 });
-        k.box(0.24, 0.16, 0.14, 0.24, 0.21, 0.28, hd, { r: 0.05, rz: -0.25 });
-        k.box(0.24, 0.16, 0.24, -0.14, 0.38, 0.02, hd, { r: 0.06, rz: 0.3, ry: 0.3 });
-        k.box(0.22, 0.15, 0.22, 0.17, 0.39, -0.1, h, { r: 0.06, rz: -0.25 });
+        const h = C(0x6f4730), hd = C(0x5e3824), hl = C(0x7c5136);
+        // the mass under the tufts: crown, back of the head and nape
+        ball(k, 0.35, 0.27, 0.32, 0, 0.09, -0.05, h);
+        ball(k, 0.31, 0.2, 0.16, 0, -0.05, -0.14, hd);
+        // jagged fringe: tufts falling over the forehead and swept a little to one side, tips stopping above the eyes
+        tuft(k, 0.105, 0.3, -0.23, 0.2, 0.2, hd, 2.45, -0.5);
+        tuft(k, 0.115, 0.33, -0.1, 0.22, 0.235, h, 2.5, -0.35);
+        tuft(k, 0.115, 0.3, 0.03, 0.235, 0.24, hl, 2.4, -0.25);
+        tuft(k, 0.105, 0.31, 0.15, 0.22, 0.225, h, 2.5, -0.1);
+        tuft(k, 0.095, 0.26, 0.255, 0.19, 0.17, hd, 2.5, 0.15);
+        // crown: tufts swept up and over to the same side
+        tuft(k, 0.13, 0.36, -0.14, 0.37, 0.06, hl, -0.25, -0.75);
+        tuft(k, 0.125, 0.34, 0.02, 0.4, -0.01, h, -0.35, -0.6);
+        tuft(k, 0.115, 0.3, 0.17, 0.36, -0.06, hd, -0.4, -0.95);
+        tuft(k, 0.11, 0.27, -0.24, 0.3, -0.08, h, -0.3, 0.2);
+        // back of the crown and the nape
+        tuft(k, 0.13, 0.32, -0.05, 0.31, -0.24, h, -1.0, -0.3);
+        tuft(k, 0.12, 0.28, 0.12, 0.2, -0.3, hd, -1.5, -0.2);
+        tuft(k, 0.1, 0.24, -0.13, -0.06, -0.27, hd, -2.6, 0.15);
+        tuft(k, 0.1, 0.24, 0.1, -0.08, -0.27, h, -2.6, -0.15);
+        // in front of each ear
+        tuft(k, 0.075, 0.22, -0.3, 0.1, 0.05, h, 3.0, -0.12);
+        tuft(k, 0.075, 0.22, 0.3, 0.1, 0.05, hd, 3.0, 0.12);
       } else {
-        const h = HH.col(P.blond), hd = HH.col(P.blondD);
-        k.box(0.73, 0.22, 0.65, 0, 0.25, -0.02, h, { r: 0.09 });
-        k.box(0.73, 0.5, 0.16, 0, 0.05, -0.28, h, { r: 0.06 });
-        k.box(0.12, 0.44, 0.3, -0.335, 0.05, -0.1, h, { r: 0.05 });
-        k.box(0.12, 0.44, 0.3, 0.335, 0.05, -0.1, h, { r: 0.05 });
-        k.box(0.34, 0.15, 0.13, -0.19, 0.2, 0.28, h, { r: 0.05, rz: 0.3 });
-        k.box(0.34, 0.15, 0.13, 0.19, 0.2, 0.28, hd, { r: 0.05, rz: -0.3 });
-        k.box(0.3, 0.26, 0.3, 0, 0.44, -0.2, hd, { r: 0.1 });
-        k.box(0.34, 0.07, 0.34, 0, 0.34, -0.2, HH.col(P.olive), { r: 0.03 });
+        // kept a step darker than the sheet: smooth, sunlit blonde blooms to white at the sheet's own value
+        const h = C(0xcf9d3a), hd = C(0xb5852e);
+        // smooth cap, two long side locks and one big round bun
+        ball(k, 0.355, 0.31, 0.34, 0, 0.08, -0.08, h);
+        ball(k, 0.33, 0.24, 0.15, 0, -0.08, -0.2, hd);
+        ball(k, 0.15, 0.2, 0.05, -0.15, -0.03, -0.355, h, { rz: -0.35 });
+        ball(k, 0.15, 0.2, 0.05, 0.15, -0.03, -0.355, h, { rz: 0.35 });
+        ball(k, 0.18, 0.12, 0.16, -0.13, 0.2, 0.14, h, { rz: 0.35 });
+        ball(k, 0.18, 0.12, 0.16, 0.13, 0.2, 0.14, h, { rz: -0.35 });
+        [-1, 1].forEach(s => ball(k, 0.062, 0.2, 0.105, s * 0.316, -0.06, 0.075, h));
+        ball(k, 0.175, 0.17, 0.17, 0, 0.37, -0.17, h);
+        ball(k, 0.1, 0.07, 0.1, 0.05, 0.43, -0.1, hd, { rz: -0.4 });
+        ball(k, 0.08, 0.06, 0.1, -0.08, 0.34, -0.3, hd);
       }
     }, head);
     const eyes = part(k => {
-      k.box(0.075, 0.135, 0.03, -0.14, 0, 0, HH.col(P.eye), { r: 0.014 });
-      k.box(0.075, 0.135, 0.03, 0.14, 0, 0, HH.col(P.eye), { r: 0.014 });
-    }, head, 0, -0.02, 0.29);
+      ball(k, 0.04, 0.075, 0.03, -0.15, 0, 0, eyeC);
+      ball(k, 0.04, 0.075, 0.03, 0.15, 0, 0, eyeC);
+    }, head, 0, -0.03, 0.272);
     eyes.children.forEach(m => { m.castShadow = false; });
 
     let lantern = null;
@@ -347,7 +404,11 @@
     x.fillStyle = '#3a2a22';
     x.font = '700 54px "Zen Maru Gothic", "Segoe UI", sans-serif';
     x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.fillText(label, 64, 65);
+    if (HH.touchMode) {
+      // on a touch screen there is no key to name: a tap mark that says "the action button works here"
+      x.beginPath(); x.arc(64, 62, 13, 0, Math.PI * 2); x.fill();
+      x.lineWidth = 6; x.strokeStyle = '#3a2a22'; x.beginPath(); x.arc(64, 62, 25, 0, Math.PI * 2); x.stroke();
+    } else x.fillText(label, 64, 65);
     const tex = new T.CanvasTexture(cv);
     tex.encoding = T.sRGBEncoding;
     const sp = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));

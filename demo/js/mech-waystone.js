@@ -300,7 +300,7 @@
       buildMarks(ctx);
       buildRoute(ctx);
       buildSpark(ctx);
-      S.prompt = makeEnterPrompt();
+      S.prompt = HH.touchMode ? HH.makePrompt('') : makeEnterPrompt();   // on a touch screen the shared tap mark replaces the key
       S.prompt.visible = false;
       ctx.scene.add(S.prompt);
       ctx.warm(4).pos.set(ctx.W.waystone.x, TUNE_WS.lightY, ctx.W.waystone.z, 0.001);
@@ -334,7 +334,7 @@
       const want = S.phase === 'dark' && d < TUNE_WS.promptReach && st.started ? 1 : 0;
       S.promptK = HH.damp(S.promptK, want, 12, dt);
       S.prompt.visible = S.promptK > 0.02;
-      S.prompt.scale.set(0.93, 0.62, 1).multiplyScalar(HH.easeOutBack(clamp(S.promptK, 0, 1)));
+      S.prompt.scale.set(HH.touchMode ? 0.62 : 0.93, 0.62, 1).multiplyScalar(HH.easeOutBack(clamp(S.promptK, 0, 1)));
       S.prompt.material.opacity = st.fuel > 0 ? 1 : 0.4;
       S.prompt.position.set(ws.x, 3.15 + Math.sin(st.time * 3) * 0.04, ws.z);
     },

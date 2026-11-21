@@ -181,10 +181,12 @@
       renderer, sun, hemi, camA, camB, final: mFinal.uniforms, pre: mPre.uniforms,
       vFar: 15, nearScale: 0.76, homeScale: 1.28,
       q: 0, split: false, lineVis: 0, seam: 0, homeBlend: 1, V: 12, pxPerUnit: 60,
-      onSplit: null, onMerge: null, particles: null
+      onSplit: null, onMerge: null, particles: null,
+      solo: null, soloScale: 0.5, soloGlide: 7   // solo: 'A' (keeper) or 'B' (hunter) for one view that follows that player; soloScale is its zoom (smaller is closer)
     };
 
-    const sA = { x: 0, z: 0 }, sB = { x: 0, z: 0 };
+    const sA = { x: 0, z: 0 }, sB = { x: 0, z: 0 }, sS = { x: 0, y: 0 };
+    let soloOn = false;
     let snapNext = true;
     const tA = new T.Vector3(), tB = new T.Vector3();
     const nrm = new T.Vector2(1, 0);
@@ -255,6 +257,12 @@
         cAx = ax + hx; cAy = ay + hy; cBx = bx - hx; cBy = by - hy;
       }
       if (Math.hypot(dx, dy) > 0.01) nrm.set(dx, dy).normalize();
+      if (view.solo) { // playing alone: one view that follows the active player, and glides across when the player switches
+        const px = view.solo === 'B' ? bx : ax, py = view.solo === 'B' ? by : ay;
+        if (!soloOn) { sS.x = px; sS.y = py; soloOn = true; }
+        sS.x = damp(sS.x, px, view.soloGlide, dt); sS.y = damp(sS.y, py, view.soloGlide, dt);
+        cAx = cBx = sS.x; cAy = cBy = sS.y + 0.4; V = vFar * view.soloScale; view.q = 0;
+      } else soloOn = false;
       if (view.inspect) { // close look at one player, for checking details only
         const px = view.inspect.who === 'B' ? bx : ax, py = view.inspect.who === 'B' ? by : ay;
         cAx = cBx = px; cAy = cBy = py + 0.5; V = view.inspect.V; view.q = 0;
@@ -265,14 +273,16 @@
       const wB = setCam(camB, cBx, cBy, V); tB.set(wB.x, 0, wB.z);
 
       const was = view.split;
-      if (!view.split && q > 1.035) view.split = true;
+      if (view.solo) view.split = false;
+      else if (!view.split && q > 1.035) view.split = true;
       else if (view.split && q < 0.992) view.split = false;
       if (view.split !== was) { if (view.split) { if (view.onSplit) view.onSplit(); } else if (view.onMerge) view.onMerge(); }
-      view.lineVis = view.inspect ? 0 : smooth(1.0, 1.1, q);
+      view.lineVis = (view.inspect || view.solo) ? 0 : smooth(1.0, 1.1, q);
       view.seam = Math.max(0, view.seam - dt * 1.5);
 
-      // focus band for the tilt-shift: keep both players sharp
-      const yA = 0.5 + (ay + 0.45 - cAy) / V, yB = 0.5 + (by + 0.45 - cBy) / V;
+      // focus band for the tilt-shift: keep both players sharp (alone: only the one on screen)
+      let yA = 0.5 + (ay + 0.45 - cAy) / V, yB = 0.5 + (by + 0.45 - cBy) / V;
+      if (view.solo === 'A') yB = yA; else if (view.solo === 'B') yA = yB;
       focusLo = Math.min(yA, yB) - 0.2; focusHi = Math.max(yA, yB) + 0.2;
     };
 

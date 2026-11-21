@@ -26,6 +26,10 @@
   /* Outside the game: the dark ground the concept sheets were drawn on. */
   --night: #1d191e;
   --plate: #2b262b;
+  /* The warm taupe ground of the newer character and enemy sheets. Each is the average ground colour of its sheet, so a crop sits on its plate without a visible edge. */
+  --sheet-hunter: #987c75;
+  --sheet-keeper: #8b746f;
+  --sheet-enemy: #98766f;
 
   /* Light. Only fire makes it. The glows are the same two colours at lower strength. */
   --flame: #ffc163;
@@ -228,8 +232,10 @@ img { max-width: 100%; height: auto; }
 
 /* ---------- The two roles ---------- */
 .role-head { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; }
-.role-figure { position: relative; flex: none; }
-.role-figure img { width: auto; height: 8.5rem; }
+.role-figure { position: relative; flex: none; padding: 0.35rem 0.5rem; border-radius: 14px; background: var(--sheet); box-shadow: 0 0.5rem 1rem var(--shade); }
+.role-figure.hunter { --sheet: var(--sheet-hunter); }
+.role-figure.keeper { --sheet: var(--sheet-keeper); }
+.role-figure img { width: auto; height: 9.5rem; }
 .role-figure::before {
   content: "";
   position: absolute;
@@ -414,9 +420,12 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
   place-items: center;
   padding: 1.5rem;
   border-radius: 6px;
-  background: var(--plate);
+  background: var(--sheet, var(--plate));
 }
 .plate img { border-radius: 0; }
+.plate.hunter { --sheet: var(--sheet-hunter); }
+.plate.keeper { --sheet: var(--sheet-keeper); }
+.plate.enemy { --sheet: var(--sheet-enemy); }
 
 /* ---------- Status ---------- */
 .status { background: var(--night); }
@@ -592,6 +601,7 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
   .shot-a { grid-column: span 7; grid-row: span 2; }
   .shot-b, .shot-c, .shot-e { grid-column: span 5; }
   .shot-d { grid-column: span 7; }
+  .shot-f, .shot-g { grid-column: span 6; }
 
   .status-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
 }
@@ -662,8 +672,8 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
         <div class="pane forest">
           <div class="pane-in gutter">
             <div class="role-head">
-              <div class="role-figure">
-                <img src="assets/hunter.png" alt="Concept art of the Hunter, a chunky low-poly figure in a green tunic with a pack on their back" width="178" height="241">
+              <div class="role-figure hunter">
+                <img src="assets/hunter-front.png" alt="Concept art of the Hunter from the front: tousled brown hair, a blue scarf, a brown leather vest with a gold buckled belt, and boots" width="240" height="338">
               </div>
               <div class="role-text">
                 <h2>The Hunter</h2>
@@ -697,8 +707,8 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
         <div class="pane home">
           <div class="pane-in gutter">
             <div class="role-head">
-              <div class="role-figure">
-                <img src="assets/keeper.png" alt="Concept art of the Hearth Keeper, a chunky low-poly figure with a hair bun and a work apron" width="137" height="182">
+              <div class="role-figure keeper">
+                <img src="assets/keeper-front.png" alt="Concept art of the Hearth Keeper from the front: blonde hair in a bun with loose side locks, a cream shirt, a brown work apron with a gold buckled belt, and boots" width="240" height="338">
               </div>
               <div class="role-text">
                 <h2>The Hearth Keeper</h2>
@@ -992,16 +1002,16 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
           <figcaption>The cottage shell before any furniture goes in. The shell is fixed. Furniture goes on a grid inside it.</figcaption>
         </figure>
         <figure class="shot shot-b">
-          <div class="plate">
-            <img src="assets/hunter-turnaround.png" alt="The Hunter seen from the front, the right, the back and the left" width="883" height="243" loading="lazy" decoding="async">
+          <div class="plate hunter">
+            <img src="assets/hunter-views.png" alt="The Hunter turned around in five views: front, front three-quarter, side, back three-quarter and back. Brown hair, a blue scarf, a leather vest and a rolled bedroll pack." width="880" height="263" loading="lazy" decoding="async">
           </div>
-          <figcaption>The Hunter. The head is about half the body height, because that reads best in half a screen.</figcaption>
+          <figcaption>The Hunter, from the character sheet. The head is about half the body height, because that reads best in half a screen.</figcaption>
         </figure>
         <figure class="shot shot-c">
-          <div class="plate">
-            <img src="assets/keeper-turnaround.png" alt="The Hearth Keeper seen from five angles" width="643" height="177" loading="lazy" decoding="async">
+          <div class="plate keeper">
+            <img src="assets/keeper-views.png" alt="The Hearth Keeper turned around in five views: front, front three-quarter, side, back three-quarter and back. Blonde hair in a bun, a cream shirt and a brown apron with a satchel." width="880" height="263" loading="lazy" decoding="async">
           </div>
-          <figcaption>The Hearth Keeper. Both characters share one rig and wear two outfits.</figcaption>
+          <figcaption>The Hearth Keeper, from the character sheet. Both characters share one rig and wear two outfits.</figcaption>
         </figure>
         <figure class="shot shot-d">
           <div class="plate">
@@ -1010,10 +1020,22 @@ figcaption { font-size: var(--t-small); line-height: 1.5; color: var(--tan); }
           <figcaption>Furniture studies. The first slice has about 8 buildable pieces and 5 keepsakes.</figcaption>
         </figure>
         <figure class="shot shot-e">
-          <div class="plate">
-            <img src="assets/creatures.png" alt="A brown boar with tusks and a round blue slime" width="277" height="130" loading="lazy" decoding="async">
+          <div class="plate enemy">
+            <img src="assets/boar-views.png" alt="The boar turned around in five views: a round, shaggy brown boar with a crest of spiky fur, a pink snout and cream tusks." width="880" height="194" loading="lazy" decoding="async">
           </div>
-          <figcaption>Boar and slime. The slime lives at the Edge, the boar in the Deepwood. The dark itself is the third threat.</figcaption>
+          <figcaption>The boar, from its enemy sheet. It lives in the Deepwood. The slime at the Edge has no new art yet. The dark itself is the third threat.</figcaption>
+        </figure>
+        <figure class="shot shot-f">
+          <div class="plate enemy">
+            <img src="assets/goblin-views.png" alt="A goblin turned around in five views: green skin, big pointed ears, a long orange nose and a stitched brown hood, with a satchel and a leather belt." width="880" height="192" loading="lazy" decoding="async">
+          </div>
+          <figcaption>Exploration, not in the first slice. A goblin, from an enemy sheet.</figcaption>
+        </figure>
+        <figure class="shot shot-g">
+          <div class="plate enemy">
+            <img src="assets/troll-views.png" alt="A large troll turned around in five views: a mossy grey-green brute with tusks, rock shoulder armour, a rope belt and a mane of brown hair." width="880" height="199" loading="lazy" decoding="async">
+          </div>
+          <figcaption>Exploration, not in the first slice. A large troll, from an enemy sheet.</figcaption>
         </figure>
       </div>
 

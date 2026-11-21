@@ -102,6 +102,16 @@
       const a = auto[who];
       if (a) return { ix: a.ix, iy: a.iy, act: false };
       if (!st.started) return { ix: 0, iy: 0, act: false };
+      // playing alone: one character is active and takes every control; the other stands still
+      if (ctx.solo) {
+        if (who !== ctx.solo) return { ix: 0, iy: 0, act: false };
+        let sx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), sy = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+        let sact = !!(pressed.KeyE || pressed.Enter || pressed.NumpadEnter || pressed.ShiftRight);
+        const v = ctx.virtual;
+        if (v.ix || v.iy) { sx = v.ix; sy = v.iy; }
+        if (v.act) { sact = true; v.act = false; }
+        return { ix: sx, iy: sy, act: sact };
+      }
       let ix = 0, iy = 0, act = false;
       if (who === 'keeper') {
         ix = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0); iy = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
@@ -198,7 +208,11 @@
       near: (c, p, r) => Math.hypot(c.x - p.x, c.z - p.z) < r,
       safeZones: [],                                    // { x, z, r }: pools of warm light where the lantern does not burn
       warm: i => ({ pos: HH.U.uWarmPos.value[i], col: HH.U.uWarmCol.value[i] }),   // warm-light slots: 4 and 5 waystone, 6 supper, 7 free
-      hud: document.getElementById('hud')
+      hud: document.getElementById('hud'),
+      // Playing alone (the touch mode uses this): set solo to 'keeper' or 'hunter' and that character takes all
+      // input while the other stands still, and the camera follows it as one view with no split. Leave it null for two players.
+      solo: null,
+      virtual: { ix: 0, iy: 0, act: false }           // an on-screen stick and button write here; act is cleared once read
     };
 
     /* ---------- interface ---------- */
@@ -400,6 +414,7 @@
       // camera
       st.dim = damp(st.dim, st.started ? 0 : 0.22, 4, dt);
       view.final.uDim.value = st.dim;
+      view.solo = ctx.solo ? (ctx.solo === 'hunter' ? 'B' : 'A') : null;
       view.update(dt, keeper, hunter, st.home && Math.hypot(keeper.x, keeper.z) < W.R + 0.5);
       hud();
     }
